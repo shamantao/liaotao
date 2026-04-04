@@ -21,6 +21,7 @@ type AppConfig struct {
 	App         AppSection         `toml:"app"`
 	Config      ConfigSection      `toml:"config"`
 	PathManager PathManagerSection `toml:"path_manager"`
+	Database    DatabaseSection    `toml:"database"`
 	Logger      LoggerSection      `toml:"logger"`
 	Reporting   ReportingSection   `toml:"reporting"`
 }
@@ -49,6 +50,14 @@ type PathManagerSection struct {
 	CollisionStrategy string   `toml:"collision_strategy"`
 	NormalizeUnicode  bool     `toml:"normalize_unicode"`
 	TrimWhitespace    bool     `toml:"trim_whitespace"`
+}
+
+// DatabaseSection holds SQLite runtime parameters.
+type DatabaseSection struct {
+	Path        string `toml:"path"`
+	BusyTimeout int    `toml:"busy_timeout_ms"`
+	JournalMode string `toml:"journal_mode"`
+	ForeignKeys bool   `toml:"foreign_keys"`
 }
 
 // LoggerSection holds logging parameters.
@@ -182,6 +191,12 @@ func validate(cfg *AppConfig) error {
 	}
 	if cfg.App.Mode != "debug" && cfg.App.Mode != "normal" {
 		return fmt.Errorf("app.mode must be 'debug' or 'normal', got '%s'", cfg.App.Mode)
+	}
+	if cfg.Database.Path == "" {
+		return fmt.Errorf("database.path is required")
+	}
+	if cfg.Database.BusyTimeout < 0 {
+		return fmt.Errorf("database.busy_timeout_ms must be >= 0")
 	}
 	return nil
 }

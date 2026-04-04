@@ -5,16 +5,19 @@ package main
 
 import (
 	"embed"
+	"io/fs"
 	"log"
 
+	"liaotao/internal/bindings"
 	"liaotao/internal/config"
+	"liaotao/internal/db"
 	"liaotao/internal/logger"
 	"liaotao/internal/paths"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-//go:embed frontend/dist
+//go:embed frontend
 var assets embed.FS
 
 func main() {
@@ -43,16 +46,35 @@ func main() {
 		"logs", runtimePaths.LogsDir,
 	)
 
-	// 4. Launch Wails application
+	// 4. Initialize SQLite and run migrations
+	database, err := db.OpenAndMigrate(cfg)
+	if err != nil {
+		log.Fatalf("database: %v", err)
+	}
+	defer database.Close()
+
+	// 5. Build backend bindings service (chat/providers/settings/conversations)
+	bindingService := bindings.NewService(database)
+	appLogger.Info("backend services ready", "has_bindings", bindingService != nil)
+
+	frontendFS, err := fs.Sub(assets, "frontend")
+	if err != nil {
+		log.Fatalf("assets: %v", err)
+	}
+
+	// 6. Launch Wails application
 	app := application.New(application.Options{
 		Name:        cfg.App.Name,
 		Description: "liaotao",
+		Services: []application.Service{
+			application.NewService(bindingService),
+		},
 		Assets: application.AssetOptions{
-			FS: assets,
+			Handler: application.AssetFileServerFS(frontendFS),
 		},
 	})
 
-	app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
+	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:  cfg.App.Name,
 		Width:  1200,
 		Height: 800,

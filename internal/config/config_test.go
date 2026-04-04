@@ -35,6 +35,12 @@ collision_strategy = "increment"
 normalize_unicode = false
 trim_whitespace = true
 
+[database]
+path = "/tmp/test/data/liaotao.db"
+busy_timeout_ms = 5000
+journal_mode = "WAL"
+foreign_keys = true
+
 [logger]
 level = "info"
 console_pretty = true

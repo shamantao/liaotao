@@ -42,6 +42,13 @@ normalize_unicode = false
 trim_whitespace   = true
 
 # ---------------------------------------------------------------------------
+[database]
+path            = "/Users/phil/kDrive/dev/ai-projects/liaotao/data/liaotao.db"
+busy_timeout_ms = 5000
+journal_mode    = "WAL"
+foreign_keys    = true
+
+# ---------------------------------------------------------------------------
 [logger]
 level         = "info"  # trace | debug | info | warn | error
 console_pretty = true

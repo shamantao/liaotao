@@ -1,0 +1,269 @@
+/*
+  base.css -- Liaotao global design tokens, reset, top-bar, tab navigation and sidebar.
+  Responsibilities: CSS custom properties (palette), html/body reset, app-shell wrapper,
+  top-bar branding & tabs, sidebar layout with collapse + drag-resize behaviour.
+*/
+
+/* ── Design tokens ─────────────────────────────────────────────────── */
+:root {
+  --bg: #1B1B1B;
+  --bg-2: #141414;
+  --surface: #1f2f43;
+  --surface-soft: #26425f;
+  --primary: #1E3D59;
+  --accent: #3E8E7E;
+  --text: #E9E3D5;
+  --text-dim: #beb8ad;
+  --danger: #cc6b64;
+  --ok: #3E8E7E;
+  --border: #2f4f6b;
+  --sidebar-width: 290px;
+}
+
+/* ── Reset ─────────────────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(1200px 550px at 18% -25%, rgba(30, 61, 89, 0.7) 0%, transparent 70%),
+    radial-gradient(1000px 500px at 100% 0%, rgba(62, 142, 126, 0.24) 0%, transparent 72%),
+    var(--bg);
+}
+
+/* ── App shell ─────────────────────────────────────────────────────── */
+.app-shell {
+  width: 100vw;
+  height: 100vh;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 35%), var(--bg-2);
+  box-shadow: 0 18px 70px rgba(6, 10, 20, 0.55);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Top bar ───────────────────────────────────────────────────────── */
+.topbar {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.18);
+  min-height: 58px;
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tab-btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 10px;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+}
+
+.tab-btn.active {
+  background: var(--surface-soft);
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.status {
+  font-family: "SFMono-Regular", Menlo, monospace;
+  color: var(--ok);
+  font-size: 0.85rem;
+  justify-self: end;
+}
+
+/* ── Tab panels ────────────────────────────────────────────────────── */
+.tab-panel {
+  display: none;
+  flex: 1;
+  min-height: 0;
+}
+
+.tab-panel.active {
+  display: block;
+  height: 100%;
+}
+
+/* ── Sidebar ───────────────────────────────────────────────────────── */
+.sidebar-wrap {
+  position: relative;
+  min-width: 72px;
+  max-width: 460px;
+  border-right: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.12);
+  display: flex;
+}
+
+.sidebar {
+  width: 100%;
+  padding: 0.8rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.sidebar h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.icon-btn {
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.15);
+  color: var(--text);
+  border-radius: 8px;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
+.sidebar button.new-chat {
+  width: 100%;
+  border: 0;
+  padding: 0.6rem;
+  border-radius: 10px;
+  font-weight: 600;
+  color: #f6f2e6;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  cursor: pointer;
+}
+
+/* ── Conversation list ─────────────────────────────────────────────── */
+.conversation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  overflow-y: auto;
+  min-height: 0;
+  padding-right: 4px;
+}
+
+.conversation-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem;
+  cursor: pointer;
+  color: var(--text-dim);
+  background: rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 40px;
+}
+
+.conversation-item .dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(62, 142, 126, 0.2);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.75rem;
+  flex: 0 0 auto;
+}
+
+.conversation-item .label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+.conversation-item.active {
+  border-color: var(--accent);
+  color: var(--text);
+  background: rgba(62, 142, 126, 0.12);
+}
+
+/* ── Sidebar resizer ───────────────────────────────────────────────── */
+.sidebar-resizer {
+  width: 6px;
+  cursor: col-resize;
+  background: linear-gradient(180deg,
+      rgba(233, 227, 213, 0.05),
+      rgba(233, 227, 213, 0.18),
+      rgba(233, 227, 213, 0.05));
+}
+
+/* ── Sidebar collapsed state ───────────────────────────────────────── */
+.app-shell.sidebar-collapsed .sidebar h3,
+.app-shell.sidebar-collapsed .conversation-item .label,
+.app-shell.sidebar-collapsed .new-chat .new-chat-label {
+  display: none;
+}
+
+.app-shell.sidebar-collapsed .sidebar-resizer {
+  display: none;
+}
+
+.app-shell.sidebar-collapsed .new-chat {
+  padding: 0.6rem 0;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* ── Keyframes ─────────────────────────────────────────────────────── */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Responsive – sidebar ──────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .sidebar-wrap {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-resizer {
+    display: none;
+  }
+}

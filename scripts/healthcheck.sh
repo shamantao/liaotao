@@ -4,6 +4,9 @@
 
 set -euo pipefail
 
+# Ensure user-level Go binaries (e.g. wails3) are discoverable in non-interactive shells.
+export PATH="$PATH:$HOME/go/bin:/opt/homebrew/bin:/usr/local/bin"
+
 STACK="auto"
 if [[ "${1:-}" == "--stack" && -n "${2:-}" ]]; then
   STACK="$2"

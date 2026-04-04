@@ -1,14 +1,22 @@
 # CHANGELOG
 
-## [Unreleased]
+## [0.1.1] - 2026-04-04
 
 ### Added
-- Initial project generated from tao-init v1.0.0
-- Config module (`tao-core-config` or equivalent)
-- Path manager module (`tao-core-paths` or equivalent)
-- Logger module (`tao-core-logger` or equivalent)
+- Full Go/Wails v3 foundation: app bootstrap, config loader, path manager, SQLite db, logger
+- Chat bindings skeleton (`internal/bindings/chat.go`) with `SendMessage` / `CancelGeneration`
+- Frontend Chat UI: sidebar (collapse + drag-resize), model selector in toolbar, streaming hook, markdown renderer, Prism code highlight, KaTeX math
+- Settings tab with card grid layout
+- macOS Finder launcher (`Lancer-liaotao.command`) using `go run .`
+- `build/config.yml` versioned (was missing, broke startup for all users)
+- `scripts/healthcheck.sh` — 16/16 checks green
+
+### Changed
+- Frontend CSS split into `base.css` / `chat.css` / `settings.css` (was `smollama.css`)
+- `.gitignore`: exclude `/logs/`, `/data/`, keep `build/config.yml`
 
 ---
 
-<!-- Follow Keep a Changelog: https://keepachangelog.com -->
-<!-- Versions: [MAJOR.MINOR.PATCH] — follow semantic versioning -->
+## [Unreleased]
+
+

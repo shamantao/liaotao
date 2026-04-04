@@ -1,0 +1,4 @@
+/* katex.min.css -- vendored local fallback for math rendering look-and-feel. */
+.katex-fallback {
+  font-family: "Times New Roman", serif;
+}

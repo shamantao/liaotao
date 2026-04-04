@@ -1,0 +1,234 @@
+/*
+  chat.css -- Liaotao chat tab layout, message bubbles and composer.
+  Responsibilities: chat grid, toolbar (model selector), message list, user/assistant
+  bubbles, action buttons, composer textarea, streaming stop button, markdown rendering,
+  KaTeX math display, and chain-of-thought <details> block.
+*/
+
+/* ── Chat layout ───────────────────────────────────────────────────── */
+.chat-layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  height: 100%;
+  min-height: 0;
+}
+
+.chat-main {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 0;
+  height: 100%;
+}
+
+/* ── Chat toolbar (model selector) ────────────────────────────────── */
+.chat-toolbar {
+  border-bottom: 1px solid var(--border);
+  padding: 0.55rem 0.8rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.chat-toolbar label {
+  color: var(--text-dim);
+  font-size: 0.83rem;
+}
+
+.chat-toolbar select {
+  border: 1px solid var(--border);
+  background: #122033;
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+  min-width: 220px;
+  max-width: 55vw;
+}
+
+/* ── Message list ──────────────────────────────────────────────────── */
+.messages {
+  padding: 1rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  min-height: 0;
+}
+
+/* ── Bubbles ───────────────────────────────────────────────────────── */
+.bubble {
+  max-width: min(88ch, 87%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0.7rem 0.85rem;
+  line-height: 1.55;
+  background: var(--surface);
+  animation: rise 180ms ease-out;
+}
+
+.bubble.user {
+  margin-left: auto;
+  background: #23435f;
+}
+
+.bubble.assistant {
+  margin-right: auto;
+}
+
+/* ── Action buttons (copy, regenerate…) ───────────────────────────── */
+.actions {
+  margin-top: 0.5rem;
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  font-size: 0.75rem;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  background: transparent;
+  border-radius: 8px;
+  padding: 0.2rem 0.45rem;
+  cursor: pointer;
+}
+
+.action-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* ── Composer ──────────────────────────────────────────────────────── */
+.composer {
+  border-top: 1px solid var(--border);
+  padding: 0.8rem;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.6rem;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+textarea {
+  resize: none;
+  min-height: 56px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #122033;
+  color: var(--text);
+  padding: 0.7rem;
+  font: inherit;
+}
+
+.send-btn,
+.stop-btn {
+  border: 0;
+  border-radius: 10px;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+  color: #f7f2e6;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+}
+
+.stop-btn {
+  color: #2d0807;
+  background: linear-gradient(90deg, #e59f96, var(--danger));
+  display: none;
+}
+
+/* ── Markdown rendering ────────────────────────────────────────────── */
+.markdown pre {
+  margin: 0.5rem 0;
+  background: #0d1522;
+  border-radius: 10px;
+  border: 1px solid #28425e;
+  padding: 0.6rem;
+  overflow-x: auto;
+  color: #cde7ff;
+}
+
+.markdown code {
+  font-family: "SFMono-Regular", Menlo, monospace;
+}
+
+.markdown blockquote {
+  margin: 0.5rem 0;
+  padding-left: 0.7rem;
+  border-left: 3px solid var(--accent);
+  color: #d7d1c6;
+}
+
+.markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.4rem 0;
+  font-size: 0.92rem;
+}
+
+.markdown th,
+.markdown td {
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.45rem;
+}
+
+.markdown ul,
+.markdown ol {
+  margin: 0.45rem 0;
+  padding-left: 1.2rem;
+}
+
+/* ── KaTeX math ────────────────────────────────────────────────────── */
+.math-inline,
+.math-block {
+  font-family: "Times New Roman", serif;
+  color: #f4f0d3;
+  background: rgba(244, 229, 178, 0.08);
+  border: 1px solid rgba(244, 229, 178, 0.25);
+  border-radius: 8px;
+  padding: 0.05rem 0.35rem;
+}
+
+.math-block {
+  display: block;
+  margin: 0.5rem 0;
+  padding: 0.5rem;
+}
+
+/* ── Chain-of-thought block ────────────────────────────────────────── */
+details.think {
+  margin-top: 0.6rem;
+  border: 1px dashed #6a7f90;
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+  color: #e1dbce;
+  background: rgba(24, 34, 50, 0.5);
+}
+
+/* ── Responsive – chat ─────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .chat-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .bubble {
+    max-width: 96%;
+  }
+
+  .composer {
+    grid-template-columns: 1fr;
+  }
+
+  .send-btn,
+  .stop-btn {
+    width: 100%;
+  }
+
+  .chat-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .chat-toolbar select {
+    min-width: 100%;
+    max-width: 100%;
+  }
+}
