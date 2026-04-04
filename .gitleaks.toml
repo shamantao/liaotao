@@ -1,0 +1,11 @@
+title = "tao-init baseline secret scanning"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Common non-secret fixtures"
+paths = [
+  '''tests/fixtures/''',
+  '''docs/''',
+]

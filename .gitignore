@@ -1,0 +1,19 @@
+# Git ignore — wails-go adapter additions (merged on top of template-core .gitignore)
+
+# Go
+/build/
+/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Wails
+frontend/dist/
+frontend/node_modules/
+wailsjs/
+
+# Go test cache
+*.test
+*.out
