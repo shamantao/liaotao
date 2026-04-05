@@ -102,6 +102,43 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at DESC);`,
+		`CREATE TABLE IF NOT EXISTS providers (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL UNIQUE,
+			type TEXT NOT NULL DEFAULT 'openai-compatible',
+			url TEXT NOT NULL DEFAULT '',
+			api_key TEXT NOT NULL DEFAULT '',
+			description TEXT NOT NULL DEFAULT '',
+			use_in_rag INTEGER NOT NULL DEFAULT 0,
+			active INTEGER NOT NULL DEFAULT 1,
+			temperature REAL NOT NULL DEFAULT 0.7,
+			num_ctx INTEGER NOT NULL DEFAULT 1024,
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_providers_name ON providers(name);`,
+		// v1.3 Smart Router tables.
+		`CREATE TABLE IF NOT EXISTS provider_priority (
+			provider_id INTEGER PRIMARY KEY REFERENCES providers(id) ON DELETE CASCADE,
+			priority    INTEGER NOT NULL DEFAULT 100
+		);`,
+		`CREATE TABLE IF NOT EXISTS provider_quota_config (
+			provider_id   INTEGER PRIMARY KEY REFERENCES providers(id) ON DELETE CASCADE,
+			daily_limit   INTEGER NOT NULL DEFAULT 0,
+			monthly_limit INTEGER NOT NULL DEFAULT 0,
+			reset_day     INTEGER NOT NULL DEFAULT 1
+		);`,
+		`CREATE TABLE IF NOT EXISTS provider_quota_usage (
+			id          INTEGER PRIMARY KEY AUTOINCREMENT,
+			provider_id INTEGER NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
+			period      TEXT    NOT NULL,
+			period_type TEXT    NOT NULL,
+			tokens_used INTEGER NOT NULL DEFAULT 0,
+			updated_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+			UNIQUE(provider_id, period, period_type)
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_quota_usage_lookup
+		 ON provider_quota_usage(provider_id, period_type, period);`,
 	}
 
 	for _, stmt := range statements {

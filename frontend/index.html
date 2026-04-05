@@ -38,6 +38,10 @@
 
         <main class="chat-main">
           <div class="chat-toolbar">
+            <label for="chat-provider">Provider</label>
+            <select id="chat-provider">
+              <!-- Populated dynamically from providers DB -->
+            </select>
             <label for="chat-model">Model</label>
             <select id="chat-model">
               <option value="gpt-4o-mini">gpt-4o-mini</option>
@@ -45,6 +49,7 @@
               <option value="mistral-small">mistral-small</option>
               <option value="llama3.2">llama3.2</option>
             </select>
+            <button class="action-btn" id="refresh-models-btn" type="button">Refresh models</button>
           </div>
           <div class="messages" id="messages"></div>
           <div class="composer">
@@ -57,28 +62,113 @@
     </section>
 
     <section id="settings" class="tab-panel settings-panel">
-      <div class="settings-grid">
-        <article class="card">
-          <h4>General</h4>
-          <label for="language">Language</label>
-          <select id="language"><option value="fr">French</option><option value="en">English</option></select>
-          <label for="theme">Theme</label>
-          <select id="theme"><option>Dark</option></select>
-        </article>
-        <article class="card">
-          <h4>Provider</h4>
-          <label for="provider-url">Base URL</label>
-          <input id="provider-url" placeholder="https://api.openai.com/v1">
-          <label for="provider-key">API Key</label>
-          <input id="provider-key" placeholder="sk-...">
-        </article>
-        <article class="card">
-          <h4>Runtime</h4>
-          <label for="temperature">Temperature</label>
-          <input id="temperature" type="number" min="0" max="2" step="0.1" value="0.7">
-          <label for="max-tokens">Max tokens</label>
-          <input id="max-tokens" type="number" min="16" max="8192" step="16" value="1024">
-        </article>
+      <div class="settings-layout">
+        <nav class="settings-nav">
+          <button class="settings-nav-btn active" data-section="general">General</button>
+          <button class="settings-nav-btn" data-section="providers">Providers</button>
+        </nav>
+        <div class="settings-content">
+
+          <!-- ── General ──────────────────────────────────── -->
+          <div class="settings-section active" id="section-general">
+            <h3>General</h3>
+            <div class="field-group">
+              <label for="language">Language</label>
+              <select id="language">
+                <option value="fr">French</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label for="theme">Theme</label>
+              <select id="theme">
+                <option value="dark">Dark</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- ── Providers ────────────────────────────────── -->
+          <div class="settings-section" id="section-providers">
+            <div class="providers-layout">
+              <aside class="providers-list-panel">
+                <div class="providers-list-header">
+                  <h4>Providers</h4>
+                  <button class="icon-btn" id="new-provider-btn" title="Add provider">＋</button>
+                </div>
+                <div class="providers-list" id="providers-list"></div>
+              </aside>
+              <div class="provider-form-panel">
+                <p class="provider-form-placeholder">Select a provider or click ＋ to add one.</p>
+                <form class="provider-form hidden" id="provider-form" autocomplete="off">
+                  <input type="hidden" id="pf-id">
+
+                  <!-- PROV-08: Pre-configured profile selector -->
+                  <div class="field-group">
+                    <label for="pf-preset">Load preset</label>
+                    <div class="preset-row">
+                      <select id="pf-preset">
+                        <option value="">— Custom / Local —</option>
+                        <!-- Populated dynamically via ListProviderProfiles -->
+                      </select>
+                      <a id="pf-docs-link" href="#" target="_blank" rel="noreferrer" class="docs-link hidden">Get API key ↗</a>
+                    </div>
+                  </div>
+
+                  <div class="field-group">
+                    <label for="pf-name">Name *</label>
+                    <input id="pf-name" placeholder="My Ollama" required>
+                  </div>
+                  <div class="field-group">
+                    <label for="pf-type">Provider type</label>
+                    <select id="pf-type">
+                      <option value="openai-compatible">OpenAI-compatible</option>
+                      <option value="ollama">Ollama</option>
+                      <option value="gemini">Gemini</option>
+                      <option value="anthropic">Anthropic</option>
+                      <option value="mistral">Mistral</option>
+                    </select>
+                  </div>
+                  <div class="field-group">
+                    <label for="pf-url">Base URL</label>
+                    <input id="pf-url" placeholder="http://localhost:11434/v1">
+                  </div>
+                  <div class="field-group">
+                    <label for="pf-key">API Key (optional)</label>
+                    <input id="pf-key" type="password" placeholder="sk-...">
+                  </div>
+                  <div class="field-group">
+                    <label for="pf-description">Description</label>
+                    <textarea id="pf-description" rows="2" placeholder="What this provider is for..."></textarea>
+                  </div>
+                  <div class="field-row">
+                    <label class="check-label"><input type="checkbox" id="pf-rag"> Use in RAG</label>
+                    <label class="check-label"><input type="checkbox" id="pf-active" checked> Active</label>
+                  </div>
+                  <div class="field-group">
+                    <label for="pf-temperature">Temperature</label>
+                    <input id="pf-temperature" type="number" min="0" max="2" step="0.1" value="0.7">
+                  </div>
+                  <div class="field-group">
+                    <label for="pf-num-ctx">Context window (num_ctx)</label>
+                    <input id="pf-num-ctx" type="number" min="128" max="131072" step="128" value="1024">
+                  </div>
+
+                  <!-- PROV-05: Test connection row -->
+                  <div class="test-connection-row">
+                    <button type="button" class="action-btn secondary" id="pf-test-btn">Test connection</button>
+                    <span id="pf-test-result" class="test-result"></span>
+                  </div>
+
+                  <div class="provider-form-actions">
+                    <button type="button" class="danger-btn hidden" id="pf-delete-btn">Delete</button>
+                    <button type="submit" class="action-btn">Save</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
     </section>
   </div>
@@ -86,7 +176,7 @@
   <script src="./prism/prism.js"></script>
   <script src="./katex/katex.min.js"></script>
   <script src="./katex/auto-render.min.js"></script>
-  <script src="/wails/runtime.js"></script>
-  <script src="./js/app.js"></script>
+  <script type="module" src="/wails/runtime.js"></script>
+  <script type="module" src="./js/app.js"></script>
 </body>
 </html>

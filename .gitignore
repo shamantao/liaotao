@@ -31,4 +31,8 @@ ehthumbs.db
 
 # docs
 docs/backlog-liaotao.md
-docs/PRD-liaotao.md
+
+# kDrive / cloud-sync conflict files (created on simultaneous edit from two machines)
+*_conflict_*
+
+docs/PRD-liaotao.mdliaotao

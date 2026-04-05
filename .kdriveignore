@@ -1,0 +1,17 @@
+# kDrive sync exclusions for liaotao
+# See PRD §8.4 — syncing these files while the app runs corrupts SQLite WAL and Git index.
+
+# Git internal files (index, logs, packs — written constantly by git operations)
+.git
+
+# SQLite WAL-mode journal files (rewritten on every write transaction)
+data/*.db-shm
+data/*.db-wal
+data/*.db-journal
+
+# Go build cache and compiled binary
+*.exe
+liaotao
+
+# Runtime logs (high-frequency writes)
+logs/

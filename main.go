@@ -27,16 +27,16 @@ func main() {
 		log.Fatalf("config: %v", err)
 	}
 
-	// 2. Initialize logger (console + JSON file)
-	appLogger, err := logger.Init(&cfg.Logger)
-	if err != nil {
-		log.Fatalf("logger: %v", err)
-	}
-
-	// 3. Build and validate runtime paths
+	// 2. Build and validate runtime paths
 	runtimePaths, err := paths.Build(cfg)
 	if err != nil {
 		log.Fatalf("paths: %v", err)
+	}
+
+	// 3. Initialize logger (console + JSON file, debug forced for v0.x / debug mode)
+	appLogger, err := logger.Init(&cfg.Logger, runtimePaths.LogsDir, cfg.App.Mode, cfg.App.Version)
+	if err != nil {
+		log.Fatalf("logger: %v", err)
 	}
 
 	appLogger.Info("startup",
