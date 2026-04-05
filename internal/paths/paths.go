@@ -82,13 +82,14 @@ func EnsureWithinAllowed(path string, allowedRoots []string) error {
 }
 
 func ensureSafe(path string, allowedRoots []string) error {
-	abs, err := filepath.Abs(path)
+	resolvedPath := expandPath(path)
+	abs, err := filepath.Abs(resolvedPath)
 	if err != nil {
 		return fmt.Errorf("cannot resolve path %s: %w", path, err)
 	}
 
 	for _, root := range allowedRoots {
-		rootAbs, err := filepath.Abs(root)
+		rootAbs, err := filepath.Abs(expandPath(root))
 		if err != nil {
 			continue
 		}
@@ -98,4 +99,19 @@ func ensureSafe(path string, allowedRoots []string) error {
 	}
 
 	return fmt.Errorf("path '%s' is outside allowed roots", path)
+}
+
+func expandPath(p string) string {
+	if p == "" {
+		return p
+	}
+	// Expand shell-style env vars like $HOME and ${HOME}.
+	p = os.ExpandEnv(p)
+	// Expand leading ~/ to user home.
+	if strings.HasPrefix(p, "~/") {
+		if home, err := os.UserHomeDir(); err == nil {
+			p = filepath.Join(home, strings.TrimPrefix(p, "~/"))
+		}
+	}
+	return p
 }

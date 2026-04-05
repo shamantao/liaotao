@@ -50,7 +50,7 @@ foreign_keys    = true
 
 # ---------------------------------------------------------------------------
 [logger]
-level         = "info"  # trace | debug | info | warn | error
+level         = "debug" # trace | debug | info | warn | error — auto-forced to debug for v0.x builds
 console_pretty = true
 file_json      = true
 

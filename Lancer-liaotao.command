@@ -15,6 +15,12 @@ echo "=== liaotao launcher ==="
 echo "Project: $PROJECT_DIR"
 echo ""
 
+if [[ ! -f "$PROJECT_DIR/main.go" ]]; then
+  echo "[ERROR] main.go not found in project directory."
+  read -r -p "Press Enter to close..." _
+  exit 1
+fi
+
 if ! command -v go >/dev/null 2>&1; then
   echo "[ERROR] Go is not installed."
   echo "Install Go: https://go.dev/dl/"
@@ -24,7 +30,6 @@ fi
 
 echo "[OK] Go: $(go version)"
 echo ""
-echo "Starting app..."
+echo "Starting app with: go run ."
 echo "(First launch may take up to 1-2 minutes while Go compiles dependencies.)"
-
-go run .
+exec go run .
