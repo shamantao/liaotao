@@ -158,6 +158,19 @@
     min-height: 52px;
   }
 
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .checkbox-row input[type="checkbox"] {
+    width: auto;
+    accent-color: var(--accent);
+  }
+
   .field-row {
     display: flex;
     gap: 1.5rem;

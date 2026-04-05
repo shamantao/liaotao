@@ -16,6 +16,7 @@ import {
   renderMessages, sendPrompt, cancelGeneration,
   appendAssistantChunk, stopStreaming, activeConversation,
   copyMessage, editMessage, regenerateMessage, deleteMessage,
+  attachResponseMeta,
 } from "./chat.js";
 import { newConversation, loadPersistedConversations } from "./conversations.js";
 
@@ -125,6 +126,14 @@ function bindEvents() {
   if (els.pfTestBtn)       els.pfTestBtn.addEventListener("click", testProviderConnection);
   if (els.pfPreset)        els.pfPreset.addEventListener("change", () => applyPreset(els.pfPreset.value));
 
+  if (els.showMetaFooter) {
+    els.showMetaFooter.addEventListener("change", () => {
+      appState.settings.showMetaFooter = els.showMetaFooter.checked;
+      persistSettingsToStorage();
+      renderMessages();
+    });
+  }
+
   // Streaming events from Go backend
   bridge.eventsOn("chat:chunk", (chunk) => {
     if (!chunk || typeof chunk.content !== "string") return;
@@ -132,6 +141,9 @@ function bindEvents() {
     if (chunk.done) stopStreaming("done");
   });
   bridge.eventsOn("chat:done",  () => stopStreaming("done"));
+  bridge.eventsOn("chat:meta",  (payload) => {
+    if (payload && payload.provider_name) attachResponseMeta(payload);
+  });
   bridge.eventsOn("chat:error", (payload) => {
     const msg = (payload && payload.message) ? payload.message : "Generation failed";
     els.status.textContent = msg;

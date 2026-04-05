@@ -26,6 +26,14 @@ type SendMessagePayload struct {
 	NumCtx         int     `json:"num_ctx"`
 }
 
+// streamMeta carries response metadata emitted via chat:meta after a successful generation.
+type streamMeta struct {
+	ProviderName    string // user-given name of the provider that answered
+	Model           string // model name resolved at routing time
+	TokensUsed      int    // estimated input tokens (len(prompt)/4)
+	TokensRemaining int    // 0 = no quota configured; >0 = tokens left before quota switch
+}
+
 // ListModelsPayload requests available models for the given provider.
 type ListModelsPayload struct {
 	ProviderID int64 `json:"provider_id"`
@@ -88,7 +96,15 @@ func (s *Service) SendMessage(_ context.Context, payload SendMessagePayload) (Se
 		if err != nil {
 			return SendMessageResult{OK: false, Reason: "provider-not-found"}, nil
 		}
-		candidates = []routerCandidate{{ProviderID: payload.ProviderID, Cfg: cfg}}
+		name, _ := s.getProviderName(context.Background(), payload.ProviderID)
+		daily, monthly := s.getQuotaLimits(context.Background(), payload.ProviderID)
+		candidates = []routerCandidate{{
+			ProviderID:   payload.ProviderID,
+			Name:         name,
+			Cfg:          cfg,
+			DailyLimit:   daily,
+			MonthlyLimit: monthly,
+		}}
 	} else {
 		var routerErr error
 		candidates, routerErr = s.selectCandidates(context.Background())
@@ -116,9 +132,20 @@ func (s *Service) SendMessage(_ context.Context, payload SendMessagePayload) (Se
 
 	go func() {
 		defer s.clearCancel(convID)
-		if err := s.streamWithCandidates(ctx, convID, candidates, payload, model, prompt); err != nil {
+		meta, err := s.streamWithCandidates(ctx, convID, candidates, payload, model, prompt)
+		if err != nil {
 			s.emitStructuredError(convID, err)
 			s.emit("chat:done", map[string]any{"conversation_id": convID, "done": true})
+			return
+		}
+		if meta.ProviderName != "" {
+			s.emit("chat:meta", map[string]any{
+				"conversation_id":  convID,
+				"provider_name":    meta.ProviderName,
+				"model":            meta.Model,
+				"tokens_used":      meta.TokensUsed,
+				"tokens_remaining": meta.TokensRemaining,
+			})
 		}
 	}()
 
@@ -145,7 +172,8 @@ func (s *Service) CancelGeneration(_ context.Context, payload CancelPayload) (ma
 // In single-candidate mode (manual override) any error is terminal.
 // In multi-candidate mode (Automat) all providers are tried before giving up.
 // Token usage is tracked for the provider that successfully serves the request (ROUTER-03).
-func (s *Service) streamWithCandidates(ctx context.Context, convID string, candidates []routerCandidate, payload SendMessagePayload, model, prompt string) error {
+// Returns streamMeta with provider/model/token info for the ROUTER-08 metadata footer.
+func (s *Service) streamWithCandidates(ctx context.Context, convID string, candidates []routerCandidate, payload SendMessagePayload, model, prompt string) (streamMeta, error) {
 	var lastErr error
 	for _, c := range candidates {
 		// Resolve model per-candidate in Automat mode (model == "").
@@ -166,16 +194,22 @@ func (s *Service) streamWithCandidates(ctx context.Context, convID string, candi
 				tokenEstimate = 1
 			}
 			_ = s.incrementTokenUsage(context.Background(), c.ProviderID, tokenEstimate)
-			return nil
+			remaining := s.getTokensRemaining(context.Background(), c.ProviderID, c.DailyLimit, c.MonthlyLimit)
+			return streamMeta{
+				ProviderName:    c.Name,
+				Model:           resolvedModel,
+				TokensUsed:      tokenEstimate,
+				TokensRemaining: remaining,
+			}, nil
 		}
 		lastErr = err
 		// Single candidate: return immediately (manual override mode — no fallback).
 		if len(candidates) == 1 {
-			return err
+			return streamMeta{}, err
 		}
 		slog.Debug("router: candidate failed, trying next", "provider_id", c.ProviderID, "err", err)
 	}
-	return lastErr
+	return streamMeta{}, lastErr
 }
 
 // streamOpenAIWithRetry wraps streamOpenAI with up to 3 attempts on 429 responses.

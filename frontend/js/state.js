@@ -16,7 +16,7 @@ export const appState = {
   providers:           [],     // ProviderRecord[] cached from DB
   activeProviderId:    null,   // number | null — currently selected provider
   settingsSection:     "general",
-  settings: { language: "fr", theme: "dark" },
+  settings: { language: "fr", theme: "dark", showMetaFooter: true },
 };
 
 // ── DOM refs ───────────────────────────────────────────────────────────────
@@ -65,6 +65,8 @@ export const els = {
   // PROV-05: test connection
   pfTestBtn:    document.getElementById("pf-test-btn"),
   pfTestResult: document.getElementById("pf-test-result"),
+  // ROUTER-08: response metadata footer toggle
+  showMetaFooter: document.getElementById("show-meta-footer"),
 };
 
 // ── Settings persistence (localStorage) ───────────────────────────────────
@@ -94,4 +96,5 @@ export function persistSettingsToStorage() {
 export function applySettingsToUI() {
   if (els.language) els.language.value = appState.settings.language || "fr";
   if (els.theme)    els.theme.value    = appState.settings.theme    || "dark";
+  if (els.showMetaFooter) els.showMetaFooter.checked = appState.settings.showMetaFooter !== false;
 }

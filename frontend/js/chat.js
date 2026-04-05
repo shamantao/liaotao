@@ -27,12 +27,23 @@ function messageActions(index) {
   `;
 }
 
+// metaFooter renders the ROUTER-08 response metadata footer for an assistant message.
+// Returns empty string when meta is absent or the global toggle is OFF.
+function metaFooter(m) {
+  if (!m.meta || !appState.settings.showMetaFooter) return "";
+  const { provider_name, model, tokens_used, tokens_remaining } = m.meta;
+  let text = `${provider_name} · ${model} · ~${tokens_used} tokens`;
+  if (tokens_remaining > 0) text += ` · ${tokens_remaining} remaining`;
+  return `<footer class="msg-meta">${text}</footer>`;
+}
+
 export function renderMessages() {
   const conv = activeConversation();
   if (!conv) { els.messages.innerHTML = ""; return; }
   els.messages.innerHTML = conv.messages.map((m, idx) => `
     <article class="bubble ${m.role}">
       <div class="markdown">${renderMarkdown(m.content)}</div>
+      ${m.role === "assistant" ? metaFooter(m) : ""}
       ${messageActions(idx)}
     </article>
   `).join("");
@@ -138,6 +149,18 @@ export async function sendPrompt() {
 
   if (!sendResult || sendResult.ok === false) {
     startFallbackStream();
+  }
+}
+
+// attachResponseMeta is called from app.js on chat:meta events (ROUTER-08).
+// Attaches provider/model/token metadata to the last assistant message and re-renders.
+export function attachResponseMeta(meta) {
+  const conv = activeConversation();
+  if (!conv || conv.messages.length === 0) return;
+  const last = conv.messages[conv.messages.length - 1];
+  if (last.role === "assistant") {
+    last.meta = meta;
+    renderMessages();
   }
 }
 

@@ -69,6 +69,51 @@ func (s *Service) upsertQuotaConfig(ctx context.Context, providerID int64, daily
 	return err
 }
 
+// getQuotaLimits returns the configured daily and monthly token limits for a provider.
+// Returns (0, 0) when no configuration exists (scan failure is silently ignored).
+func (s *Service) getQuotaLimits(ctx context.Context, providerID int64) (daily, monthly int) {
+	s.db.QueryRowContext(ctx, //nolint:errcheck
+		`SELECT COALESCE(daily_limit,0), COALESCE(monthly_limit,0)
+		 FROM provider_quota_config WHERE provider_id=?`,
+		providerID,
+	).Scan(&daily, &monthly)
+	return
+}
+
+// getTokensRemaining returns the minimum tokens remaining across configured quota periods.
+// Returns 0 when no quota is configured (signals "no token footer needed").
+func (s *Service) getTokensRemaining(ctx context.Context, providerID int64, dailyLimit, monthlyLimit int) int {
+	if dailyLimit == 0 && monthlyLimit == 0 {
+		return 0
+	}
+	now := time.Now()
+	remaining := int(^uint(0) >> 1) // max int as sentinel
+	found := false
+	check := func(limit int, period, periodType string) {
+		if limit <= 0 {
+			return
+		}
+		used, err := s.getUsageForPeriod(ctx, providerID, period, periodType)
+		if err != nil {
+			return
+		}
+		r := limit - used
+		if r < 0 {
+			r = 0
+		}
+		found = true
+		if r < remaining {
+			remaining = r
+		}
+	}
+	check(dailyLimit,   now.Format("2006-01-02"), "daily")
+	check(monthlyLimit, now.Format("2006-01"),    "monthly")
+	if !found {
+		return 0
+	}
+	return remaining
+}
+
 // setProviderPriorities updates the priority for each provider in the map
 // inside a single transaction. Key = providerID, Value = priority (0 = highest).
 func (s *Service) setProviderPriorities(ctx context.Context, priorities map[int64]int) error {

@@ -16,8 +16,11 @@ import (
 
 // routerCandidate holds a resolved provider config for a single routing attempt.
 type routerCandidate struct {
-	ProviderID int64
-	Cfg        openAIConfig
+	ProviderID   int64
+	Name         string       // user-given provider name (ROUTER-08 metadata footer)
+	Cfg          openAIConfig
+	DailyLimit   int          // quota limits for tokens-remaining calculation
+	MonthlyLimit int
 }
 
 // orderedProvider holds routing metadata joined from providers + quota tables.
@@ -57,7 +60,14 @@ func (s *Service) selectCandidates(ctx context.Context) ([]routerCandidate, erro
 			slog.Warn("credential fetch failed, skipping provider", "provider_id", p.ID, "err", credErr)
 			continue
 		}
-		candidates = append(candidates, routerCandidate{ProviderID: p.ID, Cfg: cfg})
+		name, _ := s.getProviderName(ctx, p.ID)
+		candidates = append(candidates, routerCandidate{
+			ProviderID:   p.ID,
+			Name:         name,
+			Cfg:          cfg,
+			DailyLimit:   p.DailyLimit,
+			MonthlyLimit: p.MonthlyLimit,
+		})
 	}
 
 	if len(candidates) == 0 {
