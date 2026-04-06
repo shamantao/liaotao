@@ -172,7 +172,7 @@ func (s *Service) PingMCPServer(ctx context.Context, id int64) (map[string]any, 
 	}
 	defer t.Close() //nolint:errcheck
 
-	tCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	tCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	tools, listErr := t.ListTools(tCtx)

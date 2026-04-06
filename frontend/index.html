@@ -196,14 +196,14 @@
                   <div class="field-group">
                     <label for="msf-transport">Transport *</label>
                     <select id="msf-transport">
-                      <option value="http">HTTP (Streamable HTTP / MCP 1.0)</option>
-                      <option value="sse">SSE (legacy FastMCP)</option>
+                      <option value="http">HTTP (Streamable HTTP / MCP 1.0) — URL: http://host/mcp</option>
+                      <option value="sse">SSE (legacy FastMCP / aitao) — URL: http://host:port</option>
                       <option value="stdio">stdio (spawn process)</option>
                     </select>
                   </div>
                   <div class="field-group" id="msf-url-group">
                     <label for="msf-url">URL</label>
-                    <input id="msf-url" placeholder="http://localhost:8201/mcp">
+                    <input id="msf-url" placeholder="http://localhost:8201">
                   </div>
                   <div class="field-group hidden" id="msf-cmd-group">
                     <label for="msf-command">Command</label>
@@ -220,6 +220,7 @@
                   </div>
                   <div class="field-group test-connection-row">
                     <button type="button" class="action-btn secondary" id="msf-ping-btn">Test connection</button>
+                    <button type="button" class="action-btn secondary" id="msf-copy-btn">Copy config</button>
                     <span id="msf-ping-status" class="test-result"></span>
                   </div>
                   <div id="msf-tools-list" class="tools-list hidden"></div>

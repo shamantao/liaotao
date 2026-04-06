@@ -28,6 +28,7 @@ function mcpEls() {
     status:        $("msf-status"),
     pingBtn:       $("msf-ping-btn"),
     pingStatus:    $("msf-ping-status"),
+    copyBtn:       $("msf-copy-btn"),
     toolsList:     $("msf-tools-list"),
     deleteBtn:     $("msf-delete-btn"),
     newBtn:        $("new-mcp-btn"),
@@ -173,30 +174,63 @@ async function pingMCPServer() {
   const e = mcpEls();
   const id = Number(e.id.value);
   if (!id) {
-    if (e.pingStatus) e.pingStatus.textContent = "Save the server first.";
+    if (e.pingStatus) { e.pingStatus.className = "test-result err"; e.pingStatus.textContent = "Save the server first."; }
     return;
   }
   if (e.pingBtn)    e.pingBtn.disabled = true;
-  if (e.pingStatus) e.pingStatus.textContent = "Testing…";
+  if (e.pingStatus) { e.pingStatus.className = "test-result"; e.pingStatus.textContent = "Testing…"; }
   if (e.toolsList)  { e.toolsList.innerHTML = ""; e.toolsList.classList.add("hidden"); }
 
   try {
     const res = await bridge.callService("PingMCPServer", id);
     if (res && res.ok) {
       const tools = Array.isArray(res.tools) ? res.tools : [];
-      if (e.pingStatus) e.pingStatus.textContent = `✓ Connected — ${tools.length} tool(s)`;
+      if (e.pingStatus) { e.pingStatus.className = "test-result ok"; e.pingStatus.textContent = `✓ Connected — ${tools.length} tool(s)`; }
       if (e.toolsList && tools.length > 0) {
         e.toolsList.innerHTML = tools.map((t) => `<span class="tool-badge">${t}</span>`).join("");
         e.toolsList.classList.remove("hidden");
       }
     } else {
-      if (e.pingStatus) e.pingStatus.textContent = `✗ ${res && res.error ? res.error : "unreachable"}`;
+      const errMsg = res && res.error ? res.error : "unreachable";
+      if (e.pingStatus) { e.pingStatus.className = "test-result err"; e.pingStatus.textContent = `✗ ${errMsg}`; }
     }
   } catch (err) {
     const { message } = parseWailsError(err);
-    if (e.pingStatus) e.pingStatus.textContent = `✗ ${message}`;
+    if (e.pingStatus) { e.pingStatus.className = "test-result err"; e.pingStatus.textContent = `✗ ${message}`; }
   } finally {
     if (e.pingBtn) e.pingBtn.disabled = false;
+  }
+}
+
+// ── Copy config to clipboard ───────────────────────────────────────────────
+async function copyMCPConfig() {
+  const e = mcpEls();
+  const transport = e.transport ? e.transport.value : "?";
+  const isStdio = transport === "stdio";
+
+  const lines = [
+    `Name:      ${e.name ? e.name.value.trim() || "(unsaved)" : "?"}`,
+    `Transport: ${transport}`,
+  ];
+  if (isStdio) {
+    lines.push(`Command:   ${e.command ? e.command.value.trim() || "(empty)" : "?"}`);
+    lines.push(`Args:      ${e.args ? e.args.value.trim() || "[]" : "[]"}`);
+  } else {
+    lines.push(`URL:       ${e.url ? e.url.value.trim() || "(empty)" : "?"}`);
+  }
+  lines.push(`Active:    ${e.active && e.active.checked ? "yes" : "no"}`);
+  lines.push(`ID:        ${e.id ? e.id.value || "0 (not saved yet)" : "?"}`);
+
+  const text = lines.join("\n");
+  try {
+    await navigator.clipboard.writeText(text);
+    if (e.copyBtn) {
+      const orig = e.copyBtn.textContent;
+      e.copyBtn.textContent = "Copied!";
+      setTimeout(() => { if (e.copyBtn) e.copyBtn.textContent = orig; }, 1500);
+    }
+  } catch {
+    if (e.pingStatus) e.pingStatus.textContent = "Clipboard unavailable";
   }
 }
 
@@ -209,4 +243,5 @@ export function initMCPFormListeners() {
   if (e.form)      e.form.addEventListener("submit", saveMCPServer);
   if (e.deleteBtn) e.deleteBtn.addEventListener("click", deleteCurrentMCPServer);
   if (e.pingBtn)   e.pingBtn.addEventListener("click", pingMCPServer);
+  if (e.copyBtn)   e.copyBtn.addEventListener("click", copyMCPConfig);
 }

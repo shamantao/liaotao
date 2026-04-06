@@ -365,13 +365,18 @@
   .test-connection-row {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 0.6rem;
   }
 
   .test-result {
     font-size: 0.8rem;
     color: var(--text-dim);
+    word-break: break-all;
   }
+
+  .test-result.ok  { color: var(--accent); }
+  .test-result.err { color: var(--error, #e05252); }
 
   /* ── Discovered tools list ──────────────────────────────────────────── */
   .tools-list {

@@ -130,8 +130,10 @@ func (s *Service) AllAvailableTools(ctx context.Context) []MCPTool {
 // Returns an error when the transport type is unsupported or misconfigured.
 func (s *Service) openMCPTransport(srv MCPServerConfig) (mcpTransport, error) {
 	switch srv.Transport {
-	case "http", "sse":
+	case "http":
 		return newHTTPTransport(srv.URL, s.client), nil
+	case "sse":
+		return newSSETransport(srv.URL, s.client), nil
 	case "stdio":
 		var args []string
 		if srv.Args != "" {

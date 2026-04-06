@@ -18,39 +18,61 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 // stdioTransport implements mcpTransport over a child process stdin/stdout.
 type stdioTransport struct {
-	command string
-	args    []string
+	command     string
+	args        []string
+	initTimeout time.Duration // timeout for the MCP initialize handshake (default 30s)
 
 	mu      sync.Mutex
 	cmd     *exec.Cmd
 	stdin   io.WriteCloser
 	scanner *bufio.Scanner
+	started bool // true when process (or test pipes) are ready
 	nextID  atomic.Int64
 
 	// pending maps request ID → response channel.
 	pendingMu sync.Mutex
 	pending   map[int64]chan jsonRPCResponse
+
+	// MCP protocol requires an initialize handshake before any tool call.
+	initOnce sync.Once
+	initErr  error
 }
 
 // newStdioTransport creates a stdio transport that will spawn the given command.
 // The process is not started until the first call to ListTools or CallTool.
 func newStdioTransport(command string, args []string) *stdioTransport {
 	return &stdioTransport{
-		command: command,
-		args:    args,
-		pending: make(map[int64]chan jsonRPCResponse),
+		command:     command,
+		args:        args,
+		pending:     make(map[int64]chan jsonRPCResponse),
+		initTimeout: 30 * time.Second, // subprocess may need time to load ML models
 	}
+}
+
+// newStdioTransportFromPipes creates a stdioTransport backed by pre-opened pipes.
+// Used in tests to avoid spawning a subprocess. The readLoop is started immediately.
+func newStdioTransportFromPipes(r io.Reader, w io.WriteCloser, initTimeout time.Duration) *stdioTransport {
+	t := &stdioTransport{
+		pending:     make(map[int64]chan jsonRPCResponse),
+		initTimeout: initTimeout,
+		stdin:       w,
+		scanner:     bufio.NewScanner(r),
+		started:     true,
+	}
+	go t.readLoop()
+	return t
 }
 
 // ensureStarted lazily spawns the child process on first use.
 func (t *stdioTransport) ensureStarted() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if t.cmd != nil {
+	if t.started {
 		return nil
 	}
 	cmd := exec.Command(t.command, t.args...) //nolint:gosec — command comes from user config, validated on save
@@ -69,6 +91,7 @@ func (t *stdioTransport) ensureStarted() error {
 	t.cmd = cmd
 	t.stdin = stdin
 	t.scanner = bufio.NewScanner(stdout)
+	t.started = true
 
 	// Start reader goroutine: routes responses to pending channels.
 	go t.readLoop()
@@ -117,8 +140,9 @@ func (t *stdioTransport) readLoop() {
 	t.pendingMu.Unlock()
 }
 
-// call sends a JSON-RPC request to the child process and waits for the response.
-func (t *stdioTransport) call(ctx context.Context, method string, params any) (json.RawMessage, error) {
+// sendRaw sends a JSON-RPC request to the child process and waits for the response.
+// Does NOT enforce the MCP initialize handshake — used by ensureInitialized itself.
+func (t *stdioTransport) sendRaw(ctx context.Context, method string, params any) (json.RawMessage, error) {
 	if err := t.ensureStarted(); err != nil {
 		return nil, err
 	}
@@ -171,6 +195,44 @@ func (t *stdioTransport) call(ctx context.Context, method string, params any) (j
 	}
 }
 
+// ensureInitialized performs the MCP initialize handshake exactly once.
+// The MCP protocol requires this before any tools/list or tools/call.
+// Uses t.initTimeout (default 30s) — subprocess may need time to load ML models.
+func (t *stdioTransport) ensureInitialized() {
+	t.initOnce.Do(func() {
+		slog.Debug("mcp stdio: starting initialize handshake", "command", t.command, "timeout", t.initTimeout)
+		ctx, cancel := context.WithTimeout(context.Background(), t.initTimeout)
+		defer cancel()
+
+		params := map[string]any{
+			"protocolVersion": "2024-11-05",
+			"clientInfo":      map[string]any{"name": "liaotao", "version": "0.1"},
+			"capabilities":    map[string]any{},
+		}
+		if _, err := t.sendRaw(ctx, "initialize", params); err != nil {
+			t.initErr = fmt.Errorf("mcp initialize: %w", err)
+			return
+		}
+
+		// notifications/initialized has no ID and expects no response.
+		notif, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "method": "notifications/initialized"})
+		t.mu.Lock()
+		fmt.Fprintf(t.stdin, "%s\n", notif) //nolint:errcheck
+		t.mu.Unlock()
+
+		slog.Debug("mcp stdio: initialized", "command", t.command)
+	})
+}
+
+// call ensures the MCP handshake has been done, then sends the request.
+func (t *stdioTransport) call(ctx context.Context, method string, params any) (json.RawMessage, error) {
+	t.ensureInitialized()
+	if t.initErr != nil {
+		return nil, t.initErr
+	}
+	return t.sendRaw(ctx, method, params)
+}
+
 // ListTools calls tools/list on the child process.
 func (t *stdioTransport) ListTools(ctx context.Context) ([]MCPTool, error) {
 	result, err := t.call(ctx, "tools/list", nil)
@@ -208,11 +270,14 @@ func (t *stdioTransport) CallTool(ctx context.Context, toolName string, argsJSON
 func (t *stdioTransport) Close() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if t.cmd == nil {
-		return nil
+	if t.stdin != nil {
+		_ = t.stdin.Close()
+		t.stdin = nil
 	}
-	_ = t.stdin.Close()
-	err := t.cmd.Process.Kill()
-	t.cmd = nil
-	return err
+	if t.cmd != nil {
+		err := t.cmd.Process.Kill()
+		t.cmd = nil
+		return err
+	}
+	return nil
 }

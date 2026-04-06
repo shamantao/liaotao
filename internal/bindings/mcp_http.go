@@ -1,14 +1,13 @@
 /*
-  mcp_http.go -- HTTP/SSE MCP transport (MCP-01, MCP-03, MCP-04).
-  Responsibilities: JSON-RPC 2.0 over HTTP (MCP Streamable HTTP, MCP 1.0 standard)
-  and SSE legacy transport. Connects to aitao on :8201 or any configured URL.
+  mcp_http.go -- Streamable HTTP MCP transport (MCP-01, MCP-03, MCP-04).
+  Responsibilities: JSON-RPC 2.0 over MCP Streamable HTTP (MCP 1.0 standard).
+  Legacy FastMCP SSE servers are handled by mcp_sse.go instead.
   Implements the mcpTransport interface.
 */
 
 package bindings
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -19,15 +18,15 @@ import (
 	"sync/atomic"
 )
 
-// httpTransport implements mcpTransport over HTTP (Streamable HTTP + SSE fallback).
+// httpTransport implements mcpTransport over MCP Streamable HTTP (MCP 1.0 standard).
+// The URL must point to the MCP endpoint, e.g. "http://host:8201/mcp".
 type httpTransport struct {
 	url    string
 	client *http.Client
 	nextID atomic.Int64
 }
 
-// newHTTPTransport creates an HTTP MCP transport pointed at the given base URL.
-// The URL should be the MCP endpoint, e.g. "http://localhost:8201/mcp".
+// newHTTPTransport creates a Streamable HTTP MCP transport.
 func newHTTPTransport(url string, client *http.Client) *httpTransport {
 	return &httpTransport{url: strings.TrimRight(url, "/"), client: client}
 }
@@ -41,8 +40,6 @@ func (t *httpTransport) ListTools(ctx context.Context) ([]MCPTool, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// MCP spec: result is {"tools": [...]}
 	var resp struct {
 		Tools []MCPTool `json:"tools"`
 	}
@@ -53,7 +50,6 @@ func (t *httpTransport) ListTools(ctx context.Context) ([]MCPTool, error) {
 }
 
 // CallTool invokes a tool on the MCP server and returns its text content.
-// Handles both single-content and multi-content (array) responses.
 func (t *httpTransport) CallTool(ctx context.Context, toolName string, argsJSON string) (string, error) {
 	var args any
 	if argsJSON != "" && argsJSON != "null" {
@@ -63,28 +59,18 @@ func (t *httpTransport) CallTool(ctx context.Context, toolName string, argsJSON 
 	} else {
 		args = map[string]any{}
 	}
-
-	params := map[string]any{
-		"name":      toolName,
-		"arguments": args,
-	}
+	params := map[string]any{"name": toolName, "arguments": args}
 	result, err := t.call(ctx, "tools/call", params)
 	if err != nil {
 		return "", err
 	}
-
 	return extractToolContent(result)
 }
 
-// call sends a JSON-RPC 2.0 request and returns the raw result bytes.
-// Tries Streamable HTTP first; falls back to SSE transport on 4xx.
+// call sends a JSON-RPC 2.0 request using MCP Streamable HTTP and returns the result.
 func (t *httpTransport) call(ctx context.Context, method string, params any) (json.RawMessage, error) {
 	id := t.nextID.Add(1)
-	req := jsonRPCRequest{
-		JSONRPC: "2.0",
-		ID:      id,
-		Method:  method,
-	}
+	req := jsonRPCRequest{JSONRPC: "2.0", ID: id, Method: method}
 	if params != nil {
 		encoded, err := json.Marshal(params)
 		if err != nil {
@@ -92,25 +78,11 @@ func (t *httpTransport) call(ctx context.Context, method string, params any) (js
 		}
 		req.Params = json.RawMessage(encoded)
 	}
-
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("marshal request: %w", err)
 	}
 
-	// Try Streamable HTTP (MCP 1.0 standard) first.
-	result, err := t.callStreamableHTTP(ctx, body)
-	if err == nil {
-		return result, nil
-	}
-
-	// Fall back to SSE transport (legacy FastMCP / older servers).
-	return t.callSSE(ctx, body)
-}
-
-// callStreamableHTTP sends a JSON-RPC request to the MCP HTTP endpoint
-// and reads the response as a single JSON object (non-streaming response).
-func (t *httpTransport) callStreamableHTTP(ctx context.Context, body []byte) (json.RawMessage, error) {
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, t.url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
@@ -125,16 +97,11 @@ func (t *httpTransport) callStreamableHTTP(ctx context.Context, body []byte) (js
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusMethodNotAllowed {
-		return nil, fmt.Errorf("streamable HTTP not supported (status %d)", resp.StatusCode)
+		return nil, fmt.Errorf("streamable HTTP not supported (status %d) — try SSE transport instead", resp.StatusCode)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(b)))
-	}
-
-	// If server responds with SSE content-type, delegate to SSE parser.
-	if strings.Contains(resp.Header.Get("Content-Type"), "text/event-stream") {
-		return parseSSEResponse(resp.Body)
 	}
 
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
@@ -142,50 +109,6 @@ func (t *httpTransport) callStreamableHTTP(ctx context.Context, body []byte) (js
 		return nil, err
 	}
 	return extractJSONRPCResult(raw)
-}
-
-// callSSE sends a JSON-RPC request to the SSE endpoint and reads the streamed response.
-// Used for legacy FastMCP servers (aitao ≤ MCP 0.9).
-func (t *httpTransport) callSSE(ctx context.Context, body []byte) (json.RawMessage, error) {
-	sseURL := t.url + "/sse"
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, sseURL, bytes.NewReader(body))
-	if err != nil {
-		return nil, err
-	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Accept", "text/event-stream")
-
-	resp, err := t.client.Do(httpReq)
-	if err != nil {
-		return nil, fmt.Errorf("SSE transport: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return nil, fmt.Errorf("SSE HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(b)))
-	}
-	return parseSSEResponse(resp.Body)
-}
-
-// parseSSEResponse reads an SSE stream and returns the first JSON-RPC result found.
-func parseSSEResponse(body io.Reader) (json.RawMessage, error) {
-	scanner := bufio.NewScanner(body)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if !strings.HasPrefix(line, "data:") {
-			continue
-		}
-		data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
-		if data == "" || data == "[DONE]" {
-			continue
-		}
-		return extractJSONRPCResult([]byte(data))
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("SSE read error: %w", err)
-	}
-	return nil, fmt.Errorf("SSE stream ended without a result")
 }
 
 // extractJSONRPCResult unmarshals a JSON-RPC response and returns the result field.
@@ -203,7 +126,6 @@ func extractJSONRPCResult(raw []byte) (json.RawMessage, error) {
 // extractToolContent parses the MCP tools/call result and returns printable text.
 // MCP spec: result = {"content": [{"type":"text","text":"..."}]} or {"content":"..."}
 func extractToolContent(raw json.RawMessage) (string, error) {
-	// Try array-of-content-blocks format (standard MCP).
 	var resp struct {
 		Content []struct {
 			Type string `json:"type"`
@@ -224,11 +146,10 @@ func extractToolContent(raw json.RawMessage) (string, error) {
 		}
 		return result, nil
 	}
-
-	// Fallback: treat entire result as a string.
 	var s string
 	if err := json.Unmarshal(raw, &s); err == nil {
 		return s, nil
 	}
 	return string(raw), nil
 }
+
