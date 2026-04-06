@@ -8,6 +8,7 @@
 import { appState, els, persistSettingsToStorage } from "./state.js";
 import { bridge }     from "./bridge.js";
 import { escapeHtml } from "./markdown.js";
+import { parseWailsError, applyFieldError, clearFieldError } from "./errors.js";
 
 // Module-level cache for PROV-08 preset profiles.
 let providerProfiles = [];
@@ -176,6 +177,7 @@ export function openProviderForm(p) {
   if (els.pfPreset)   els.pfPreset.value = "";
   if (els.pfDocsLink) els.pfDocsLink.classList.add("hidden");
   if (els.pfTestResult) { els.pfTestResult.textContent = ""; els.pfTestResult.style.color = ""; }
+  clearFieldError(els.pfName, els.status);
 }
 
 export function hideProviderForm() {
@@ -253,31 +255,47 @@ export async function saveProvider(event) {
     const saved = appState.providers.find((p) => p.id === savedID);
     if (saved) openProviderForm(saved);
   } catch (err) {
-    const msg = String(err && err.message ? err.message : err || "save failed");
-    if (msg.toLowerCase().includes("unique") || msg.toLowerCase().includes("providers.name")) {
-      els.status.textContent = "duplicate name";
-    } else {
-      els.status.textContent = `save failed: ${msg}`;
-    }
+    const { message, field } = parseWailsError(err);
+    const fieldEl = field ? document.getElementById(field) : null;
+    applyFieldError(fieldEl || els.pfName, els.status, message);
   }
+}
+
+// inlineConfirm: 1st click → button shows "Confirmer ?", 2nd click → runs onConfirm.
+// Avoids window.confirm() which is silently blocked by Wails/WKWebView.
+function inlineConfirm(btn, onConfirm) {
+  if (btn.dataset.confirming === "1") {
+    delete btn.dataset.confirming;
+    clearTimeout(Number(btn.dataset.confirmTimer));
+    btn.textContent = btn.dataset.origLabel || "Delete";
+    onConfirm();
+    return;
+  }
+  btn.dataset.confirming = "1";
+  btn.dataset.origLabel = btn.textContent;
+  btn.textContent = "Confirmer ?";
+  btn.dataset.confirmTimer = String(setTimeout(() => {
+    delete btn.dataset.confirming;
+    btn.textContent = btn.dataset.origLabel || "Delete";
+  }, 3000));
 }
 
 export async function deleteCurrentProvider() {
   const id = Number(els.pfId.value) || 0;
   if (!id) return;
-  if (!window.confirm("Delete this provider?")) return;
-
-  const result = await bridge.callService("DeleteProvider", { id });
-  if (!result || !result.ok) {
-    els.status.textContent = "delete failed";
-    return;
-  }
-  if (appState.activeProviderId === id) {
-    appState.activeProviderId = null;
-  }
-  hideProviderForm();
-  await loadProviders();
-  els.status.textContent = "deleted";
+  inlineConfirm(els.pfDeleteBtn, async () => {
+    const result = await bridge.callService("DeleteProvider", { id });
+    if (!result || !result.ok) {
+      els.status.textContent = "delete failed";
+      return;
+    }
+    if (appState.activeProviderId === id) {
+      appState.activeProviderId = null;
+    }
+    hideProviderForm();
+    await loadProviders();
+    els.status.textContent = "deleted";
+  });
 }
 
 // ── Model listing (PROV-04: uses provider_id, not api_key) ────────────────

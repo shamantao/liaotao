@@ -139,6 +139,18 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_quota_usage_lookup
 		 ON provider_quota_usage(provider_id, period_type, period);`,
+		// v1.4 MCP server registry.
+		`CREATE TABLE IF NOT EXISTS mcp_servers (
+			id        INTEGER PRIMARY KEY AUTOINCREMENT,
+			name      TEXT    NOT NULL UNIQUE,
+			transport TEXT    NOT NULL DEFAULT 'http',
+			url       TEXT    NOT NULL DEFAULT '',
+			command   TEXT    NOT NULL DEFAULT '',
+			args      TEXT    NOT NULL DEFAULT '[]',
+			active    INTEGER NOT NULL DEFAULT 1,
+			created_at TEXT   NOT NULL DEFAULT (datetime('now')),
+			updated_at TEXT   NOT NULL DEFAULT (datetime('now'))
+		);`,
 	}
 
 	for _, stmt := range statements {

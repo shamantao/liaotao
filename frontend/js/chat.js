@@ -27,7 +27,22 @@ function messageActions(index) {
   `;
 }
 
-// metaFooter renders the ROUTER-08 response metadata footer for an assistant message.
+// toolCallsBlock renders inline tool call indicators and collapsible results (MCP-08/09).
+function toolCallsBlock(m) {
+  if (!m.toolCalls || m.toolCalls.length === 0) return "";
+  return m.toolCalls.map((tc) => {
+    const safeName = tc.name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    if (tc.status === "calling") {
+      return `<div class="tool-call calling">⚙ <strong>${safeName}</strong>…</div>`;
+    }
+    const safeResult = (tc.result || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return `<div class="tool-call done">⚙ <strong>${safeName}</strong></div>
+      <details class="tool-result">
+        <summary>▶ result</summary>
+        <pre class="tool-result-content">${safeResult}</pre>
+      </details>`;
+  }).join("");
+}
 // Returns empty string when meta is absent or the global toggle is OFF.
 function metaFooter(m) {
   if (!m.meta || !appState.settings.showMetaFooter) return "";
@@ -43,6 +58,7 @@ export function renderMessages() {
   els.messages.innerHTML = conv.messages.map((m, idx) => `
     <article class="bubble ${m.role}">
       <div class="markdown">${renderMarkdown(m.content)}</div>
+      ${m.role === "assistant" ? toolCallsBlock(m) : ""}
       ${m.role === "assistant" ? metaFooter(m) : ""}
       ${messageActions(idx)}
     </article>
@@ -160,6 +176,35 @@ export function attachResponseMeta(meta) {
   const last = conv.messages[conv.messages.length - 1];
   if (last.role === "assistant") {
     last.meta = meta;
+    renderMessages();
+  }
+}
+
+// appendToolCall inserts an inline "calling: tool_name…" indicator in the last assistant bubble (MCP-08).
+export function appendToolCall(toolName) {
+  const conv = activeConversation();
+  if (!conv) return;
+  const last = conv.messages[conv.messages.length - 1];
+  if (!last || last.role !== "assistant") {
+    conv.messages.push({ role: "assistant", content: "", toolCalls: [] });
+  }
+  const msg = conv.messages[conv.messages.length - 1];
+  if (!msg.toolCalls) msg.toolCalls = [];
+  msg.toolCalls.push({ name: toolName, status: "calling", result: null });
+  renderMessages();
+}
+
+// updateToolResult replaces the "calling" indicator with a collapsible result block (MCP-09).
+export function updateToolResult(toolCallId, content) {
+  const conv = activeConversation();
+  if (!conv || conv.messages.length === 0) return;
+  const last = conv.messages[conv.messages.length - 1];
+  if (!last || !last.toolCalls) return;
+  const tc = last.toolCalls.find((c) => c.id === toolCallId || c.status === "calling");
+  if (tc) {
+    tc.id = toolCallId;
+    tc.status = "done";
+    tc.result = content;
     renderMessages();
   }
 }

@@ -182,11 +182,10 @@ func (s *Service) streamWithCandidates(ctx context.Context, convID string, candi
 			resolvedModel = s.resolveModelForCandidate(ctx, c)
 		}
 		var err error
-		if c.Cfg.Type == "ollama" {
-			err = s.streamOllama(ctx, convID, c.Cfg, payload, resolvedModel, prompt)
-		} else {
-			err = s.streamOpenAIWithRetry(ctx, convID, c.Cfg, payload, resolvedModel, prompt)
-		}
+		// All provider types go through the OpenAI-compat tool-call loop.
+		// Ollama exposes /v1/chat/completions (OpenAI-compat) and supports tool_calls.
+		// streamOpenAIWithToolsRetry already falls back to streamOllama if the /v1 call fails.
+		err = s.streamOpenAIWithToolsRetry(ctx, convID, c.Cfg, payload, resolvedModel, prompt)
 		if err == nil {
 			// Estimate input tokens (1 token ≈ 4 chars) and record usage (ROUTER-03).
 			tokenEstimate := len(prompt) / 4
@@ -210,6 +209,36 @@ func (s *Service) streamWithCandidates(ctx context.Context, convID string, candi
 		slog.Debug("router: candidate failed, trying next", "provider_id", c.ProviderID, "err", err)
 	}
 	return streamMeta{}, lastErr
+}
+
+// streamOpenAIWithToolsRetry wraps streamOpenAIWithTools with up to 3 attempts on 429.
+// Delegates to streamOpenAIWithTools which handles the full MCP tool-call loop.
+func (s *Service) streamOpenAIWithToolsRetry(ctx context.Context, convID string, cfg openAIConfig, payload SendMessagePayload, model, prompt string) error {
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		lastErr = s.streamOpenAIWithTools(ctx, convID, cfg, payload, model, prompt)
+		if lastErr == nil {
+			return nil
+		}
+		pe, isProvider := lastErr.(ProviderError)
+		if !isProvider || !pe.Retryable || attempt >= 2 {
+			break
+		}
+		wait := calcBackoff(attempt)
+		if pe.RetryAfterSec > 0 {
+			wait = time.Duration(pe.RetryAfterSec) * time.Second
+		}
+		select {
+		case <-time.After(wait):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	// Last resort for OpenAI-compat providers: fall back to native Ollama if reachable.
+	if ollamaErr := s.streamOllama(ctx, convID, cfg, payload, model, prompt); ollamaErr == nil {
+		return nil
+	}
+	return lastErr
 }
 
 // streamOpenAIWithRetry wraps streamOpenAI with up to 3 attempts on 429 responses.

@@ -66,6 +66,7 @@
         <nav class="settings-nav">
           <button class="settings-nav-btn active" data-section="general">General</button>
           <button class="settings-nav-btn" data-section="providers">Providers</button>
+          <button class="settings-nav-btn" data-section="mcp">MCP Servers</button>
         </nav>
         <div class="settings-content">
 
@@ -174,7 +175,63 @@
             </div>
           </div>
 
-        </div>
+          <!-- ── MCP Servers ──────────────────────────────── -->
+          <div class="settings-section" id="section-mcp">
+            <div class="providers-layout">
+              <aside class="providers-list-panel">
+                <div class="providers-list-header">
+                  <h4>MCP Servers</h4>
+                  <button class="icon-btn" id="new-mcp-btn" title="Add MCP server">＋</button>
+                </div>
+                <div class="providers-list" id="mcp-servers-list"></div>
+              </aside>
+              <div class="provider-form-panel">
+                <p class="provider-form-placeholder" id="mcp-form-placeholder">Select a server or click ＋ to add one.</p>
+                <form class="provider-form hidden" id="mcp-server-form" autocomplete="off">
+                  <input type="hidden" id="msf-id">
+                  <div class="field-group">
+                    <label for="msf-name">Name *</label>
+                    <input id="msf-name" placeholder="aitao local" required>
+                  </div>
+                  <div class="field-group">
+                    <label for="msf-transport">Transport *</label>
+                    <select id="msf-transport">
+                      <option value="http">HTTP (Streamable HTTP / MCP 1.0)</option>
+                      <option value="sse">SSE (legacy FastMCP)</option>
+                      <option value="stdio">stdio (spawn process)</option>
+                    </select>
+                  </div>
+                  <div class="field-group" id="msf-url-group">
+                    <label for="msf-url">URL</label>
+                    <input id="msf-url" placeholder="http://localhost:8201/mcp">
+                  </div>
+                  <div class="field-group hidden" id="msf-cmd-group">
+                    <label for="msf-command">Command</label>
+                    <input id="msf-command" placeholder="aitao">
+                  </div>
+                  <div class="field-group hidden" id="msf-args-group">
+                    <label for="msf-args">Args (JSON array)</label>
+                    <input id="msf-args" placeholder='["mcp", "stdio"]'>
+                  </div>
+                  <div class="field-group">
+                    <label class="checkbox-row" for="msf-active">
+                      <input type="checkbox" id="msf-active" checked> Active
+                    </label>
+                  </div>
+                  <div class="field-group test-connection-row">
+                    <button type="button" class="action-btn secondary" id="msf-ping-btn">Test connection</button>
+                    <span id="msf-ping-status" class="test-result"></span>
+                  </div>
+                  <div id="msf-tools-list" class="tools-list hidden"></div>
+                  <div class="provider-form-actions">
+                    <button type="button" class="danger-btn hidden" id="msf-delete-btn">Delete</button>
+                    <button type="submit" class="action-btn">Save</button>
+                  </div>
+                  <p id="msf-status" class="form-status-msg"></p>
+                </form>
+              </div>
+            </div>
+          </div>
       </div>
     </section>
   </div>

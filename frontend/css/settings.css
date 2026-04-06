@@ -193,14 +193,17 @@
     cursor: pointer;
   }
 
-  /* ── Providers section overrides full max-width ─────────────────────── */
-  #section-providers {
+  /* ── Two-column sections: override max-width + switch to flex ───────── */
+  #section-providers,
+  #section-mcp {
     max-width: none;
     height: 100%;
     display: none;
+    overflow: hidden;
   }
 
-  #section-providers.active {
+  #section-providers.active,
+  #section-mcp.active {
     display: flex;
   }
 
@@ -347,6 +350,50 @@
     justify-content: flex-end;
     gap: 0.6rem;
     margin-top: 1rem;
+  }
+
+  /* ── Form status message ────────────────────────────────────────────── */
+  .form-status-msg {
+    font-size: 0.8rem;
+    color: var(--error, #e05252);
+    min-height: 1.2em;
+    margin: 0.4rem 0 0;
+    text-align: right;
+  }
+
+  /* ── Test connection row (MCP ping) ────────────────────────────────── */
+  .test-connection-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .test-result {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+
+  /* ── Discovered tools list ──────────────────────────────────────────── */
+  .tools-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.4rem 0;
+  }
+
+  .tool-badge {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    color: var(--accent);
+    background: transparent;
+  }
+
+  /* ── Field-level error highlight ────────────────────────────────────── */
+  .field-error {
+    border-color: var(--error, #e05252) !important;
+    box-shadow: 0 0 0 2px rgba(224, 82, 82, 0.25);
   }
 
   /* ── Action buttons (shared with chat) ─────────────────────────────── */

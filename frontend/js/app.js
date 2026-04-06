@@ -16,9 +16,10 @@ import {
   renderMessages, sendPrompt, cancelGeneration,
   appendAssistantChunk, stopStreaming, activeConversation,
   copyMessage, editMessage, regenerateMessage, deleteMessage,
-  attachResponseMeta,
+  attachResponseMeta, appendToolCall, updateToolResult,
 } from "./chat.js";
 import { newConversation, loadPersistedConversations } from "./conversations.js";
+import { loadMCPServers, initMCPFormListeners } from "./mcp.js";
 
 // ── Settings navigation ────────────────────────────────────────────────────
 function switchSettingsSection(sectionId) {
@@ -29,6 +30,9 @@ function switchSettingsSection(sectionId) {
     sec.classList.toggle("active", sec.id === `section-${sectionId}`));
   if (sectionId === "providers") {
     loadProviders();
+  }
+  if (sectionId === "mcp") {
+    loadMCPServers();
   }
 }
 
@@ -144,6 +148,12 @@ function bindEvents() {
   bridge.eventsOn("chat:meta",  (payload) => {
     if (payload && payload.provider_name) attachResponseMeta(payload);
   });
+  bridge.eventsOn("chat:tool_call", (payload) => {
+    if (payload && payload.tool_name) appendToolCall(payload.tool_name);
+  });
+  bridge.eventsOn("chat:tool_result", (payload) => {
+    if (payload && payload.tool_call_id) updateToolResult(payload.tool_call_id, payload.content);
+  });
   bridge.eventsOn("chat:error", (payload) => {
     const msg = (payload && payload.message) ? payload.message : "Generation failed";
     els.status.textContent = msg;
@@ -170,6 +180,7 @@ async function init() {
   loadSettingsFromStorage();
   applySettingsToUI();
   bindEvents();
+  initMCPFormListeners();
   await loadProviders();
   await loadProviderProfiles();
   await loadModels();

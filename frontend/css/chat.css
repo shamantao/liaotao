@@ -55,6 +55,48 @@
   min-height: 0;
 }
 
+/* ── Tool call indicators and results (MCP-08/09) ──────────────────── */
+.tool-call.calling {
+  font-size: 0.8rem;
+  color: var(--accent);
+  margin: 0.4rem 0;
+  opacity: 0.85;
+}
+
+.tool-call.done {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin: 0.4rem 0 0.1rem;
+}
+
+.tool-result {
+  margin: 0.4rem 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tool-result summary {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+}
+
+.tool-result summary:hover {
+  color: var(--text);
+}
+
+.tool-result-content {
+  padding: 0.5rem 0.7rem;
+  font-size: 0.78rem;
+  background: rgba(0, 0, 0, 0.2);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
 /* ── Response metadata footer (ROUTER-08) ──────────────────────────── */
 .msg-meta {
   font-size: 0.7rem;
