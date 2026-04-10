@@ -42,6 +42,15 @@ func OpenAndMigrate(cfg *config.AppConfig) (*sql.DB, error) {
 	return db, nil
 }
 
+// ApplySchemaForTest runs pragma setup and the full migration on an existing *sql.DB.
+// Intended for unit tests in other packages that need a properly initialized schema.
+func ApplySchemaForTest(database *sql.DB) error {
+	if _, err := database.Exec("PRAGMA foreign_keys=ON;"); err != nil {
+		return err
+	}
+	return migrate(context.Background(), database)
+}
+
 func ensureDatabasePath(cfg *config.AppConfig) error {
 	dbPath := cfg.Database.Path
 	if err := paths.EnsureWithinAllowed(dbPath, cfg.PathManager.AllowedRoots); err != nil {
@@ -81,11 +90,18 @@ func applyPragmas(db *sql.DB, cfg *config.AppConfig) error {
 }
 
 func migrate(ctx context.Context, db *sql.DB) error {
+	// Phase A: one-time migration — rename provider_id from TEXT to INTEGER FK.
+	// Safe to call on every startup: detects column type and skips if already INTEGER.
+	if err := migrateConversationsProviderID(ctx, db); err != nil {
+		return err
+	}
+
+	// Phase B: idempotent baseline schema (no-op when tables already exist).
 	statements := []string{
 		`CREATE TABLE IF NOT EXISTS conversations (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			title TEXT NOT NULL,
-			provider_id TEXT NOT NULL,
+			provider_id INTEGER REFERENCES providers(id) ON DELETE SET NULL,
 			model TEXT NOT NULL,
 			created_at TEXT NOT NULL DEFAULT (datetime('now')),
 			updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -159,4 +175,82 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		}
 	}
 	return nil
+}
+
+// migrateConversationsProviderID converts conversations.provider_id from TEXT to INTEGER.
+// SQLite has no ALTER COLUMN — requires table recreation inside a transaction.
+// This migration is idempotent: it checks the column type before running.
+func migrateConversationsProviderID(ctx context.Context, db *sql.DB) error {
+	// Check if the conversations table exists.
+	var exists int
+	err := db.QueryRowContext(
+		ctx,
+		`SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='conversations'`,
+	).Scan(&exists)
+	if err != nil || exists == 0 {
+		return nil // table not yet created — initial schema path handles it
+	}
+
+	// Check whether provider_id is still TEXT.
+	needsMigration := false
+	prows, err := db.QueryContext(ctx, `PRAGMA table_info(conversations)`)
+	if err != nil {
+		return fmt.Errorf("pragma table_info conversations: %w", err)
+	}
+	defer prows.Close()
+	for prows.Next() {
+		var cid, notnull, pk int
+		var name, typ string
+		var dflt sql.NullString
+		if err := prows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
+			return fmt.Errorf("scan pragma: %w", err)
+		}
+		if name == "provider_id" && strings.EqualFold(typ, "TEXT") {
+			needsMigration = true
+		}
+	}
+	if err := prows.Err(); err != nil {
+		return err
+	}
+	if !needsMigration {
+		return nil
+	}
+
+	// Run inside a transaction so a partial failure leaves the DB unchanged.
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin migration tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	steps := []string{
+		// 1. New table with INTEGER FK.
+		`CREATE TABLE conversations_v2 (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			title TEXT NOT NULL,
+			provider_id INTEGER REFERENCES providers(id) ON DELETE SET NULL,
+			model TEXT NOT NULL,
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+		);`,
+		// 2. Copy rows: resolve stored text (name OR cast id) to numeric FK.
+		`INSERT INTO conversations_v2 (id, title, provider_id, model, created_at, updated_at)
+		 SELECT c.id, c.title,
+		        COALESCE(
+				    (SELECT p.id FROM providers p WHERE CAST(p.id AS TEXT) = c.provider_id LIMIT 1),
+				    (SELECT p.id FROM providers p WHERE p.name = c.provider_id LIMIT 1)
+			    ),
+			    c.model, c.created_at, c.updated_at
+		 FROM conversations c;`,
+		// 3. Swap tables.
+		`DROP TABLE conversations;`,
+		`ALTER TABLE conversations_v2 RENAME TO conversations;`,
+		`CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at DESC);`,
+	}
+	for _, s := range steps {
+		if _, err := tx.ExecContext(ctx, s); err != nil {
+			return fmt.Errorf("provider_id migration: %w", err)
+		}
+	}
+	return tx.Commit()
 }

@@ -46,7 +46,7 @@ func (s *Service) DispatchToolCalls(ctx context.Context, calls []ToolCall) []Too
 // Built-ins are tried first, then active MCP servers in DB order.
 func (s *Service) executeSingleTool(ctx context.Context, name, argsJSON string) string {
 	// 1. Built-in tools — no external dependency.
-	if result, handled := dispatchBuiltin(name, argsJSON); handled {
+	if result, handled := dispatchBuiltin(name, argsJSON, s.allowedRoots); handled {
 		slog.Debug("mcp: built-in tool dispatched", "tool", name)
 		return result
 	}
