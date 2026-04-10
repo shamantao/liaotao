@@ -130,6 +130,7 @@ type openAIChatRequest struct {
 	Messages    []openAIChatMessage `json:"messages"`
 	Stream      bool                `json:"stream"`
 	Temperature *float64            `json:"temperature,omitempty"`
+	MaxTokens   int                 `json:"max_tokens,omitempty"`
 	Tools       []openAIToolDef     `json:"tools,omitempty"`
 	ToolChoice  string              `json:"tool_choice,omitempty"` // "auto" | "none"
 }
@@ -138,13 +139,13 @@ type openAIChatMessage struct {
 	Role       string     `json:"role"`
 	Content    string     `json:"content,omitempty"`
 	ToolCallID string     `json:"tool_call_id,omitempty"` // for role=tool messages
-	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`  // for role=assistant with tool calls
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`   // for role=assistant with tool calls
 }
 
 // openAIToolDef wraps an MCPTool into the OpenAI function-calling format.
 type openAIToolDef struct {
-	Type     string          `json:"type"` // always "function"
-	Function openAIFuncDef  `json:"function"`
+	Type     string        `json:"type"` // always "function"
+	Function openAIFuncDef `json:"function"`
 }
 
 type openAIFuncDef struct {
@@ -156,7 +157,7 @@ type openAIFuncDef struct {
 type openAIStreamChunk struct {
 	Choices []struct {
 		Delta struct {
-			Content   string     `json:"content"`
+			Content   string `json:"content"`
 			ToolCalls []struct {
 				Index    int    `json:"index"`
 				ID       string `json:"id"`

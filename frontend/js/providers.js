@@ -14,6 +14,25 @@ import { parseWailsError, applyFieldError, clearFieldError } from "./errors.js";
 let providerProfiles = [];
 const modelCache = new Map();
 
+function providerStatusSymbol(providerID) {
+  const status = appState.providerStatus[providerID] || "unknown";
+  if (status === "connected") return "✓";
+  if (status === "disconnected") return "✗";
+  return "…";
+}
+
+function providerStatusLabel(providerID) {
+  const status = appState.providerStatus[providerID] || "unknown";
+  if (status === "connected") return "connected";
+  if (status === "disconnected") return "disconnected";
+  return "unknown";
+}
+
+export function setProviderStatus(providerID, status) {
+  if (!providerID || providerID <= 0) return;
+  appState.providerStatus[providerID] = status;
+}
+
 // CORCT-02: provider-specific URL placeholders used in Settings form.
 const providerURLPlaceholders = {
   "openai-compatible": "https://api.openai.com/v1",
@@ -44,7 +63,7 @@ export function updateChatProviderSelector() {
   }
 
   els.chatProvider.innerHTML = automatOption +
-    active.map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
+    active.map((p) => `<option value="${p.id}">${escapeHtml(p.name)} ${providerStatusSymbol(p.id)}</option>`).join("");
 
   const prevId = appState.activeProviderId;
   if (prevId === 0) {
@@ -106,8 +125,10 @@ export function updateProviderURLPlaceholder() {
 }
 
 function setModelSelectorOptions(models, selectedModel = "") {
+  const filter = (appState.modelFilterQuery || "").trim().toLowerCase();
   const safeModels = Array.isArray(models)
     ? models.filter((item) => item && typeof item.id === "string" && item.id.trim() !== "")
+            .filter((item) => !filter || String(item.id).toLowerCase().includes(filter))
     : [];
 
   if (safeModels.length === 0) {
@@ -134,13 +155,95 @@ function setModelSelectorOptions(models, selectedModel = "") {
   els.chatModel.value = safeModels[0].id;
 }
 
+function setUnifiedModelSelectorOptions(selectedModel = "") {
+  const active = appState.providers.filter((p) => p.active);
+  const filter = (appState.modelFilterQuery || "").trim().toLowerCase();
+  const optionGroups = [];
+  for (const provider of active) {
+    const models = modelCache.get(provider.id) || [];
+    if (models.length === 0) continue;
+    const filtered = models.filter((item) => {
+      const id = String(item.id || "");
+      if (!filter) return true;
+      return id.toLowerCase().includes(filter) || provider.name.toLowerCase().includes(filter);
+    });
+    if (filtered.length === 0) continue;
+    const options = filtered
+      .map((item) => `<option value="${escapeHtml(`${provider.id}::${item.id}`)}">${escapeHtml(item.id)}</option>`)
+      .join("");
+    optionGroups.push(`<optgroup label="${escapeHtml(provider.name)} (${providerStatusLabel(provider.id)})">${options}</optgroup>`);
+  }
+  if (optionGroups.length === 0) {
+    els.chatModel.innerHTML = `<option value="">Open to load models…</option>`;
+    els.chatModel.value = "";
+    return;
+  }
+  els.chatModel.innerHTML = optionGroups.join("");
+  const selectedKey = appState.activeProviderId > 0
+    ? `${appState.activeProviderId}::${selectedModel || els.chatModel.dataset.pendingValue || ""}`
+    : "";
+  if (selectedKey && els.chatModel.querySelector(`option[value="${CSS.escape(selectedKey)}"]`)) {
+    els.chatModel.value = selectedKey;
+    return;
+  }
+  const previous = els.chatModel.dataset.pendingValue || "";
+  if (previous && els.chatModel.querySelector(`option[value="${CSS.escape(previous)}"]`)) {
+    els.chatModel.value = previous;
+    return;
+  }
+  const firstOption = els.chatModel.querySelector("option");
+  if (firstOption) {
+    els.chatModel.value = firstOption.value;
+  }
+}
+
+export function rememberLastUsedModel(providerID, providerName, model) {
+  const normalizedModel = String(model || "").trim();
+  if (!normalizedModel) return;
+  const normalizedProviderID = Number(providerID) || 0;
+  appState.lastUsedModels = appState.lastUsedModels
+    .filter((item) => !(item.providerId === normalizedProviderID && item.model === normalizedModel));
+  appState.lastUsedModels.unshift({
+    providerId: normalizedProviderID,
+    providerName: providerName || (normalizedProviderID > 0 ? "provider" : "Automat"),
+    model: normalizedModel,
+    usedAt: Date.now(),
+  });
+  appState.lastUsedModels = appState.lastUsedModels.slice(0, 6);
+  persistSettingsToStorage();
+  renderLastUsedModels();
+}
+
+export function renderLastUsedModels() {
+  if (!els.lastUsedModels) return;
+  if (!Array.isArray(appState.lastUsedModels) || appState.lastUsedModels.length === 0) {
+    els.lastUsedModels.innerHTML = "";
+    return;
+  }
+  els.lastUsedModels.innerHTML = appState.lastUsedModels
+    .map((entry, idx) => `<button class="last-used-chip" type="button" data-last-used-index="${idx}" title="${escapeHtml(entry.providerName)}">${escapeHtml(entry.model)}</button>`)
+    .join("");
+  els.lastUsedModels.querySelectorAll("button[data-last-used-index]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.dataset.lastUsedIndex);
+      const item = appState.lastUsedModels[idx];
+      if (!item) return;
+      if (item.providerId > 0 && appState.providers.some((p) => p.id === item.providerId && p.active)) {
+        appState.activeProviderId = item.providerId;
+        els.chatProvider.value = String(item.providerId);
+      }
+      syncChatModelSelector(item.model);
+      persistSettingsToStorage();
+      els.status.textContent = "last used model restored";
+    });
+  });
+}
+
 export function syncChatModelSelector(selectedModel = "") {
   if (!els.chatModel) return;
 
   if (appState.activeProviderId === 0) {
-    const label = selectedModel ? `Automat (${selectedModel})` : "— router selects —";
-    els.chatModel.innerHTML = `<option value="${escapeHtml(selectedModel)}">${escapeHtml(label)}</option>`;
-    els.chatModel.value = selectedModel;
+    setUnifiedModelSelectorOptions(selectedModel);
     return;
   }
 
@@ -192,13 +295,17 @@ export async function testProviderConnection() {
   const result = await bridge.callService("TestConnection", { provider_id: id });
   if (!els.pfTestResult) return;
   if (result && result.ok) {
+    setProviderStatus(id, "connected");
     els.pfTestResult.textContent = `✓ ${result.latency_ms} ms — ${result.model_count} model(s)`;
     els.pfTestResult.style.color = "var(--c-ok, #4caf50)";
   } else {
+    setProviderStatus(id, "disconnected");
     const errMsg = (result && result.error) ? result.error : "connection failed";
     els.pfTestResult.textContent = `✗ ${errMsg}`;
     els.pfTestResult.style.color = "var(--c-err, #f44336)";
   }
+  updateChatProviderSelector();
+  renderProvidersList();
 }
 
 // ── Provider CRUD ──────────────────────────────────────────────────────────
@@ -216,6 +323,7 @@ export async function loadProviders() {
     : [];
   renderProvidersList();
   updateChatProviderSelector();
+  renderLastUsedModels();
 }
 
 export function renderProvidersList() {
@@ -233,7 +341,7 @@ export function renderProvidersList() {
       <span class="provider-item-dot">${escapeHtml(p.name.slice(0, 1).toUpperCase())}</span>
       <div class="provider-item-info">
         <span class="provider-item-name">${escapeHtml(p.name)}</span>
-        <span class="provider-item-type">${escapeHtml(p.type)}</span>
+        <span class="provider-item-type">${escapeHtml(p.type)} · ${providerStatusSymbol(p.id)} ${providerStatusLabel(p.id)}</span>
       </div>
       ${p.active ? "" : '<span class="inactive-badge">off</span>'}
     `;
@@ -417,15 +525,31 @@ export async function loadModels(options = {}) {
   }
 
   els.status.textContent = "loading models...";
-  const result = await bridge.callService("ListModels", { provider_id: prov.id });
+  let result = null;
+  try {
+    result = await bridge.callService("ListModels", { provider_id: prov.id });
+  } catch {
+    setProviderStatus(prov.id, "disconnected");
+    syncChatModelSelector(preferredModel);
+    els.status.textContent = "model load failed";
+    updateChatProviderSelector();
+    renderProvidersList();
+    return;
+  }
   if (!Array.isArray(result) || result.length === 0) {
+    setProviderStatus(prov.id, "disconnected");
     modelCache.delete(prov.id);
     syncChatModelSelector(preferredModel);
     els.status.textContent = "no models found";
+    updateChatProviderSelector();
+    renderProvidersList();
     return;
   }
 
+  setProviderStatus(prov.id, "connected");
   modelCache.set(prov.id, result);
   setModelSelectorOptions(result, preferredModel);
+  updateChatProviderSelector();
+  renderProvidersList();
   els.status.textContent = "models loaded";
 }

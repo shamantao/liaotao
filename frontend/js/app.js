@@ -9,6 +9,8 @@ import { bridge } from "./bridge.js";
 import {
   loadProviders, loadProviderProfiles, loadModels,
   updateChatProviderSelector,
+  renderLastUsedModels,
+  rememberLastUsedModel,
   saveProvider, deleteCurrentProvider, showNewProviderForm,
   testProviderConnection, applyPreset, updateProviderURLPlaceholder, syncChatModelSelector,
 } from "./providers.js";
@@ -18,7 +20,7 @@ import {
   copyMessage, editMessage, regenerateMessage, deleteMessage,
   attachResponseMeta, appendToolCall, updateToolResult,
 } from "./chat.js";
-import { newConversation, loadPersistedConversations, searchConversations } from "./conversations.js";
+import { newConversation, loadPersistedConversations, saveActiveConversationSettings, searchConversations } from "./conversations.js";
 import { loadMCPServers, initMCPFormListeners } from "./mcp.js";
 
 // ── Settings navigation ────────────────────────────────────────────────────
@@ -102,6 +104,7 @@ function bindEvents() {
         ? (appState.providers.find((p) => p.id === newId)?.name || "")
         : "";
       conv.model = "";
+      await saveActiveConversationSettings();
     }
     persistSettingsToStorage();
     syncChatModelSelector("");
@@ -113,8 +116,62 @@ function bindEvents() {
 
   els.chatModel.addEventListener("change", () => {
     const conv = appState.conversations.find((c) => c.id === appState.activeConversationId);
-    if (conv) conv.model = els.chatModel.value;
+    if (!conv) return;
+    if (appState.activeProviderId === 0 && typeof els.chatModel.value === "string" && els.chatModel.value.includes("::")) {
+      const [providerIDRaw, model] = els.chatModel.value.split("::");
+      const providerID = Number(providerIDRaw) || 0;
+      if (providerID > 0) {
+        appState.activeProviderId = providerID;
+        els.chatProvider.value = String(providerID);
+        conv.providerId = providerID;
+        conv.providerName = appState.providers.find((p) => p.id === providerID)?.name || "";
+      }
+      conv.model = model || "";
+    } else {
+      conv.model = els.chatModel.value;
+    }
+    rememberLastUsedModel(conv.providerId, conv.providerName, conv.model);
+    saveActiveConversationSettings();
   });
+
+  if (els.chatModelFilter) {
+    els.chatModelFilter.addEventListener("input", () => {
+      appState.modelFilterQuery = els.chatModelFilter.value || "";
+      const conv = appState.conversations.find((c) => c.id === appState.activeConversationId);
+      syncChatModelSelector(conv ? conv.model : "");
+    });
+  }
+
+  if (els.chatTemperature) {
+    els.chatTemperature.addEventListener("change", () => {
+      const conv = appState.conversations.find((c) => c.id === appState.activeConversationId);
+      if (!conv) return;
+      conv.temperature = Number(els.chatTemperature.value) > 0 ? Number(els.chatTemperature.value) : 0.7;
+      saveActiveConversationSettings();
+    });
+  }
+
+  if (els.chatMaxTokens) {
+    els.chatMaxTokens.addEventListener("change", () => {
+      const conv = appState.conversations.find((c) => c.id === appState.activeConversationId);
+      if (!conv) return;
+      conv.maxTokens = Math.max(0, Number(els.chatMaxTokens.value) || 0);
+      saveActiveConversationSettings();
+    });
+  }
+
+  if (els.chatSystemPrompt) {
+    let systemPromptDebounce = null;
+    els.chatSystemPrompt.addEventListener("input", () => {
+      const conv = appState.conversations.find((c) => c.id === appState.activeConversationId);
+      if (!conv) return;
+      conv.systemPrompt = els.chatSystemPrompt.value || "";
+      if (systemPromptDebounce) clearTimeout(systemPromptDebounce);
+      systemPromptDebounce = setTimeout(() => {
+        saveActiveConversationSettings();
+      }, 240);
+    });
+  }
 
   els.prompt.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendPrompt(); }
@@ -207,6 +264,7 @@ async function init() {
   await loadProviders();
   await loadProviderProfiles();
   await loadPersistedConversations();
+  renderLastUsedModels();
 }
 
 init();

@@ -17,6 +17,9 @@ export const appState = {
   conversationSearchQuery: "",
   providers:           [],     // ProviderRecord[] cached from DB
   activeProviderId:    null,   // number | null — currently selected provider
+  providerStatus:      {},     // providerId -> "connected" | "disconnected" | "unknown"
+  lastUsedModels:      [],     // [{ providerId, providerName, model, usedAt }]
+  modelFilterQuery:    "",
   settingsSection:     "general",
   settings: { language: "fr", theme: "dark", showMetaFooter: true },
 };
@@ -36,7 +39,12 @@ export const els = {
   newChat:        document.getElementById("new-chat-btn"),
   conversationSearch: document.getElementById("conversation-search"),
   chatProvider:   document.getElementById("chat-provider"),
+  chatModelFilter: document.getElementById("chat-model-filter"),
   chatModel:      document.getElementById("chat-model"),
+  chatTemperature: document.getElementById("chat-temperature"),
+  chatMaxTokens:   document.getElementById("chat-max-tokens"),
+  chatSystemPrompt: document.getElementById("chat-system-prompt"),
+  lastUsedModels: document.getElementById("last-used-models"),
   refreshModels:  document.getElementById("refresh-models-btn"),
   sidebarToggle:  document.getElementById("sidebar-toggle"),
   sidebarResizer: document.getElementById("sidebar-resizer"),
@@ -84,6 +92,9 @@ export function loadSettingsFromStorage() {
     if (parsed.activeProviderId != null) {
       appState.activeProviderId = parsed.activeProviderId;
     }
+    if (Array.isArray(parsed.lastUsedModels)) {
+      appState.lastUsedModels = parsed.lastUsedModels.slice(0, 6);
+    }
   } catch {
     // ignore corrupt storage
   }
@@ -93,6 +104,7 @@ export function persistSettingsToStorage() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     settings:         appState.settings,
     activeProviderId: appState.activeProviderId,
+    lastUsedModels:   appState.lastUsedModels,
   }));
 }
 

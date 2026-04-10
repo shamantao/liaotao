@@ -23,6 +23,8 @@ type SendMessagePayload struct {
 	Prompt         string  `json:"prompt"`
 	Stream         bool    `json:"stream"`
 	Temperature    float64 `json:"temperature"`
+	MaxTokens      int     `json:"max_tokens"`
+	SystemPrompt   string  `json:"system_prompt"`
 	NumCtx         int     `json:"num_ctx"`
 }
 
@@ -118,6 +120,18 @@ func (s *Service) SendMessage(_ context.Context, payload SendMessagePayload) (Se
 
 	first := candidates[0].Cfg
 	model := strings.TrimSpace(payload.Model)
+	temperature := payload.Temperature
+	if temperature <= 0 {
+		temperature = 0.7
+	}
+	if temperature > 2 {
+		temperature = 2
+	}
+	payload.Temperature = temperature
+	if payload.MaxTokens < 0 {
+		payload.MaxTokens = 0
+	}
+	payload.SystemPrompt = strings.TrimSpace(payload.SystemPrompt)
 	// In manual-override mode, fall back to the provider's default when no model selected.
 	// In Automat mode (model == ""), streamWithCandidates resolves the model per-candidate.
 	if model == "" && payload.ProviderID > 0 {
@@ -274,4 +288,3 @@ func (s *Service) streamOpenAIWithRetry(ctx context.Context, convID string, cfg 
 	}
 	return lastErr
 }
-

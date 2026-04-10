@@ -253,6 +253,61 @@ func TestConversation_MessageTokenStats(t *testing.T) {
 	}
 }
 
+// TestConversation_UpdateConversationSettings verifies per-conversation runtime
+// settings persistence (provider/model/temperature/max_tokens/system_prompt).
+func TestConversation_UpdateConversationSettings(t *testing.T) {
+	ctx := context.Background()
+	database := newConversationTestDB(t)
+	svc := NewService(database)
+
+	provider, err := svc.CreateProvider(ctx, CreateProviderPayload{
+		Name:        "p-settings",
+		Type:        "openai-compatible",
+		URL:         "http://localhost:11434/v1",
+		Active:      true,
+		Temperature: 0.7,
+		NumCtx:      1024,
+	})
+	if err != nil {
+		t.Fatalf("CreateProvider: %v", err)
+	}
+
+	conv, err := svc.CreateConversation(ctx, CreateConversationPayload{Title: "Cfg", ProviderID: 0, Model: "gpt-4o-mini"})
+	if err != nil {
+		t.Fatalf("CreateConversation: %v", err)
+	}
+
+	updated, err := svc.UpdateConversationSettings(ctx, UpdateConversationSettingsPayload{
+		ConversationID: conv.ID,
+		ProviderID:     provider.ID,
+		Model:          "llama3.2",
+		Temperature:    1.1,
+		MaxTokens:      256,
+		SystemPrompt:   "Be concise",
+	})
+	if err != nil {
+		t.Fatalf("UpdateConversationSettings: %v", err)
+	}
+
+	if updated.ProviderID != provider.ID || updated.Model != "llama3.2" {
+		t.Fatalf("unexpected provider/model after update: %+v", updated)
+	}
+	if updated.Temperature != 1.1 || updated.MaxTokens != 256 || updated.SystemPrompt != "Be concise" {
+		t.Fatalf("unexpected runtime settings after update: %+v", updated)
+	}
+
+	list, err := svc.ListConversations(ctx, ListConversationsPayload{Limit: 10})
+	if err != nil {
+		t.Fatalf("ListConversations: %v", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("expected one conversation, got %d", len(list))
+	}
+	if list[0].MaxTokens != 256 || list[0].SystemPrompt != "Be concise" {
+		t.Fatalf("list does not expose updated settings: %+v", list[0])
+	}
+}
+
 // TestConversation_ProviderIDStoredAsInteger verifies that CreateConversation
 // stores a numeric provider_id FK and that ListConversations returns the
 // resolved provider name — not a raw string.

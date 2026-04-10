@@ -8,7 +8,7 @@
 import { appState, els } from "./state.js";
 import { bridge }        from "./bridge.js";
 import { renderMarkdown, applyEnhancers } from "./markdown.js";
-import { getActiveProvider } from "./providers.js";
+import { getActiveProvider, rememberLastUsedModel } from "./providers.js";
 
 // ── Utilities (chat-scoped) ────────────────────────────────────────────────
 export function activeConversation() {
@@ -178,11 +178,15 @@ export async function sendPrompt() {
   const text = els.prompt.value.trim();
   if (!conv || !text || appState.isStreaming) return;
 
-  const prov = getActiveProvider();
+  const activeProv = getActiveProvider();
+  const prov = activeProv || appState.providers.find((p) => p.id === conv.providerId) || null;
   appState.isStreaming = true;
   appState.lastUserPrompt = text;
-  conv.model        = els.chatModel.value;
+  conv.model        = appState.activeProviderId === 0 && typeof els.chatModel.value === "string" && els.chatModel.value.includes("::")
+    ? (els.chatModel.value.split("::")[1] || "")
+    : els.chatModel.value;
   conv.providerName = prov ? prov.name : conv.providerName;
+  rememberLastUsedModel(conv.providerId, conv.providerName, conv.model);
   conv.messages.push({
     role: "user",
     content: text,
@@ -206,11 +210,13 @@ export async function sendPrompt() {
 
   const sendResult = await bridge.callService("SendMessage", {
     conversation_id: String(conv.id),
-    provider_id:     prov ? prov.id : 0,
+    provider_id:     Number(conv.providerId) > 0 ? Number(conv.providerId) : (prov ? prov.id : 0),
     model:           conv.model,
     prompt:          text,
     stream:          true,
-    temperature:     prov ? prov.temperature : 0.7,
+    temperature:     Number(conv.temperature) > 0 ? Number(conv.temperature) : (prov ? prov.temperature : 0.7),
+    max_tokens:      Math.max(0, Number(conv.maxTokens) || 0),
+    system_prompt:   String(conv.systemPrompt || ""),
     num_ctx:         prov ? prov.num_ctx     : 1024,
   });
 

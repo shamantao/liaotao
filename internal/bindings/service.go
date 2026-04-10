@@ -47,12 +47,15 @@ func (s *Service) Health(ctx context.Context) (map[string]any, error) {
 
 // ConversationSummary is a thin list item payload for the sidebar.
 type ConversationSummary struct {
-	ID         int64  `json:"id"`
-	Title      string `json:"title"`
-	ProviderID int64  `json:"provider_id"` // numeric FK; 0 = no provider
-	Provider   string `json:"provider"`    // resolved display name
-	Model      string `json:"model"`
-	UpdatedAt  string `json:"updated_at"`
+	ID           int64   `json:"id"`
+	Title        string  `json:"title"`
+	ProviderID   int64   `json:"provider_id"` // numeric FK; 0 = no provider
+	Provider     string  `json:"provider"`    // resolved display name
+	Model        string  `json:"model"`
+	Temperature  float64 `json:"temperature"`
+	MaxTokens    int     `json:"max_tokens"`
+	SystemPrompt string  `json:"system_prompt"`
+	UpdatedAt    string  `json:"updated_at"`
 }
 
 // CreateConversationPayload is the frontend request payload to create a conversation.
@@ -79,6 +82,16 @@ type RenameConversationPayload struct {
 	Title          string `json:"title"`
 }
 
+// UpdateConversationSettingsPayload updates provider/model/runtime generation settings.
+type UpdateConversationSettingsPayload struct {
+	ConversationID int64   `json:"conversation_id"`
+	ProviderID     int64   `json:"provider_id"`
+	Model          string  `json:"model"`
+	Temperature    float64 `json:"temperature"`
+	MaxTokens      int     `json:"max_tokens"`
+	SystemPrompt   string  `json:"system_prompt"`
+}
+
 // ListMessagesPayload controls message listing for one conversation.
 type ListMessagesPayload struct {
 	ConversationID int64 `json:"conversation_id"`
@@ -95,11 +108,11 @@ type MessageTokenStats struct {
 }
 
 type MessageSummary struct {
-	ID        int64  `json:"id"`
-	Role      string `json:"role"`
-	Content   string `json:"content"`
+	ID         int64             `json:"id"`
+	Role       string            `json:"role"`
+	Content    string            `json:"content"`
 	TokenStats MessageTokenStats `json:"token_stats"`
-	CreatedAt string `json:"created_at"`
+	CreatedAt  string            `json:"created_at"`
 }
 
 // CreateConversation inserts and returns a new conversation id.
@@ -116,7 +129,8 @@ func (s *Service) CreateConversation(ctx context.Context, payload CreateConversa
 	// NULLIF(provider_id, 0) stores NULL when no provider is selected.
 	res, err := s.db.ExecContext(
 		ctx,
-		`INSERT INTO conversations (title, provider_id, model) VALUES (?, NULLIF(?, 0), ?)`,
+		`INSERT INTO conversations (title, provider_id, model, temperature, max_tokens, system_prompt)
+		 VALUES (?, NULLIF(?, 0), ?, 0.7, 0, '')`,
 		title,
 		payload.ProviderID,
 		model,
@@ -132,12 +146,13 @@ func (s *Service) CreateConversation(ctx context.Context, payload CreateConversa
 	item := ConversationSummary{}
 	err = s.db.QueryRowContext(
 		ctx,
-		`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model, c.updated_at
+		`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
+		        COALESCE(c.temperature, 0.7), COALESCE(c.max_tokens, 0), COALESCE(c.system_prompt, ''), c.updated_at
 		 FROM conversations c
 		 LEFT JOIN providers p ON p.id = c.provider_id
 		 WHERE c.id = ?`,
 		id,
-	).Scan(&item.ID, &item.Title, &item.ProviderID, &item.Provider, &item.Model, &item.UpdatedAt)
+	).Scan(&item.ID, &item.Title, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt)
 	if err != nil {
 		return ConversationSummary{}, err
 	}
@@ -169,7 +184,8 @@ func (s *Service) listConversationsWithQuery(ctx context.Context, query string, 
 	if trimmed == "" {
 		rows, err = s.db.QueryContext(
 			ctx,
-			`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model, c.updated_at
+			`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
+			        COALESCE(c.temperature, 0.7), COALESCE(c.max_tokens, 0), COALESCE(c.system_prompt, ''), c.updated_at
 			 FROM conversations c
 			 LEFT JOIN providers p ON p.id = c.provider_id
 			 ORDER BY c.updated_at DESC
@@ -180,7 +196,8 @@ func (s *Service) listConversationsWithQuery(ctx context.Context, query string, 
 		needle := "%" + strings.ToLower(trimmed) + "%"
 		rows, err = s.db.QueryContext(
 			ctx,
-			`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model, c.updated_at
+			`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
+			        COALESCE(c.temperature, 0.7), COALESCE(c.max_tokens, 0), COALESCE(c.system_prompt, ''), c.updated_at
 			 FROM conversations c
 			 LEFT JOIN providers p ON p.id = c.provider_id
 			 WHERE LOWER(c.title) LIKE ?
@@ -204,7 +221,7 @@ func (s *Service) listConversationsWithQuery(ctx context.Context, query string, 
 	items := make([]ConversationSummary, 0, limit)
 	for rows.Next() {
 		var item ConversationSummary
-		if err := rows.Scan(&item.ID, &item.Title, &item.ProviderID, &item.Provider, &item.Model, &item.UpdatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.Title, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -245,12 +262,81 @@ func (s *Service) RenameConversation(ctx context.Context, payload RenameConversa
 	item := ConversationSummary{}
 	err = s.db.QueryRowContext(
 		ctx,
-		`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model, c.updated_at
+		`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
+		        COALESCE(c.temperature, 0.7), COALESCE(c.max_tokens, 0), COALESCE(c.system_prompt, ''), c.updated_at
 		 FROM conversations c
 		 LEFT JOIN providers p ON p.id = c.provider_id
 		 WHERE c.id = ?`,
 		payload.ConversationID,
-	).Scan(&item.ID, &item.Title, &item.ProviderID, &item.Provider, &item.Model, &item.UpdatedAt)
+	).Scan(&item.ID, &item.Title, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt)
+	if err != nil {
+		return ConversationSummary{}, err
+	}
+
+	return item, nil
+}
+
+// UpdateConversationSettings updates provider/model/runtime settings for one conversation.
+func (s *Service) UpdateConversationSettings(ctx context.Context, payload UpdateConversationSettingsPayload) (ConversationSummary, error) {
+	if payload.ConversationID <= 0 {
+		return ConversationSummary{}, fmt.Errorf("conversation id must be > 0")
+	}
+
+	model := strings.TrimSpace(payload.Model)
+	if model == "" {
+		model = "gpt-4o-mini"
+	}
+	temperature := payload.Temperature
+	if temperature <= 0 {
+		temperature = 0.7
+	}
+	if temperature > 2 {
+		temperature = 2
+	}
+	maxTokens := payload.MaxTokens
+	if maxTokens < 0 {
+		maxTokens = 0
+	}
+	systemPrompt := strings.TrimSpace(payload.SystemPrompt)
+
+	res, err := s.db.ExecContext(
+		ctx,
+		`UPDATE conversations
+		 SET provider_id = NULLIF(?, 0),
+		     model = ?,
+		     temperature = ?,
+		     max_tokens = ?,
+		     system_prompt = ?,
+		     updated_at = datetime('now')
+		 WHERE id = ?`,
+		payload.ProviderID,
+		model,
+		temperature,
+		maxTokens,
+		systemPrompt,
+		payload.ConversationID,
+	)
+	if err != nil {
+		return ConversationSummary{}, err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return ConversationSummary{}, err
+	}
+	if affected == 0 {
+		return ConversationSummary{}, fmt.Errorf("conversation %d not found", payload.ConversationID)
+	}
+
+	item := ConversationSummary{}
+	err = s.db.QueryRowContext(
+		ctx,
+		`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
+		        COALESCE(c.temperature, 0.7), COALESCE(c.max_tokens, 0), COALESCE(c.system_prompt, ''), c.updated_at
+		 FROM conversations c
+		 LEFT JOIN providers p ON p.id = c.provider_id
+		 WHERE c.id = ?`,
+		payload.ConversationID,
+	).Scan(&item.ID, &item.Title, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt)
 	if err != nil {
 		return ConversationSummary{}, err
 	}
@@ -305,9 +391,9 @@ func (s *Service) ListMessages(ctx context.Context, payload ListMessagesPayload)
 
 // MessagePayload is the persistent format for chat messages.
 type MessagePayload struct {
-	ConversationID int64  `json:"conversation_id"`
-	Role           string `json:"role"`
-	Content        string `json:"content"`
+	ConversationID int64              `json:"conversation_id"`
+	Role           string             `json:"role"`
+	Content        string             `json:"content"`
 	TokenStats     *MessageTokenStats `json:"token_stats,omitempty"`
 }
 

@@ -50,12 +50,14 @@ func (s *Service) streamOpenAIWithTools(ctx context.Context, convID string, cfg 
 	}
 
 	// Build conversation history: start with the user message.
-	messages := []openAIChatMessage{
-		{Role: "user", Content: prompt},
+	messages := []openAIChatMessage{}
+	if payload.SystemPrompt != "" {
+		messages = append(messages, openAIChatMessage{Role: "system", Content: payload.SystemPrompt})
 	}
+	messages = append(messages, openAIChatMessage{Role: "user", Content: prompt})
 
 	for iteration := 0; iteration < maxToolLoopIterations; iteration++ {
-		toolCalls, assistantText, err := s.streamOpenAICollecting(ctx, convID, cfg, model, messages, tools, iteration == 0)
+		toolCalls, assistantText, err := s.streamOpenAICollecting(ctx, convID, cfg, payload, model, messages, tools, iteration == 0)
 		if err != nil {
 			return err
 		}
@@ -111,6 +113,7 @@ func (s *Service) streamOpenAICollecting(
 	ctx context.Context,
 	convID string,
 	cfg openAIConfig,
+	payload SendMessagePayload,
 	model string,
 	messages []openAIChatMessage,
 	tools []MCPTool,
@@ -122,6 +125,12 @@ func (s *Service) streamOpenAICollecting(
 		Stream:     true,
 		Tools:      mcpToolsToOpenAI(tools),
 		ToolChoice: "auto",
+	}
+	if payload.Temperature > 0 {
+		reqPayload.Temperature = &payload.Temperature
+	}
+	if payload.MaxTokens > 0 {
+		reqPayload.MaxTokens = payload.MaxTokens
 	}
 
 	var body bytes.Buffer

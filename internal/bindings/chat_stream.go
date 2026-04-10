@@ -20,15 +20,21 @@ import (
 
 func (s *Service) streamOpenAI(ctx context.Context, convID string, cfg openAIConfig, payload SendMessagePayload, model, prompt string) error {
 	startedAt := time.Now()
+	messages := []openAIChatMessage{}
+	if payload.SystemPrompt != "" {
+		messages = append(messages, openAIChatMessage{Role: "system", Content: payload.SystemPrompt})
+	}
+	messages = append(messages, openAIChatMessage{Role: "user", Content: prompt})
 	reqPayload := openAIChatRequest{
-		Model: model,
-		Messages: []openAIChatMessage{
-			{Role: "user", Content: prompt},
-		},
-		Stream: true,
+		Model:    model,
+		Messages: messages,
+		Stream:   true,
 	}
 	if payload.Temperature > 0 {
 		reqPayload.Temperature = &payload.Temperature
+	}
+	if payload.MaxTokens > 0 {
+		reqPayload.MaxTokens = payload.MaxTokens
 	}
 
 	var body bytes.Buffer
@@ -145,12 +151,16 @@ func (s *Service) streamOllama(ctx context.Context, convID string, cfg openAICon
 	ollamaBase := strings.TrimSuffix(cfg.BaseURL, "/v1")
 
 	reqPayload := map[string]any{
-		"model":  model,
-		"stream": true,
-		"messages": []map[string]string{
-			{"role": "user", "content": prompt},
-		},
+		"model":    model,
+		"stream":   true,
+		"messages": []map[string]string{},
 	}
+	messages := make([]map[string]string, 0, 2)
+	if payload.SystemPrompt != "" {
+		messages = append(messages, map[string]string{"role": "system", "content": payload.SystemPrompt})
+	}
+	messages = append(messages, map[string]string{"role": "user", "content": prompt})
+	reqPayload["messages"] = messages
 
 	options := map[string]any{}
 	if payload.Temperature > 0 {
@@ -158,6 +168,9 @@ func (s *Service) streamOllama(ctx context.Context, convID string, cfg openAICon
 	}
 	if payload.NumCtx > 0 {
 		options["num_ctx"] = payload.NumCtx
+	}
+	if payload.MaxTokens > 0 {
+		options["num_predict"] = payload.MaxTokens
 	}
 	if len(options) > 0 {
 		reqPayload["options"] = options

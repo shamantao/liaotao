@@ -119,6 +119,9 @@ async function activateConversation(conv) {
     els.chatProvider.value = "0";
     persistSettingsToStorage();
   }
+  if (els.chatTemperature) els.chatTemperature.value = String(Number(conv.temperature) || 0.7);
+  if (els.chatMaxTokens) els.chatMaxTokens.value = String(Number(conv.maxTokens) || 0);
+  if (els.chatSystemPrompt) els.chatSystemPrompt.value = conv.systemPrompt || "";
   syncChatModelSelector(conv.model || "");
   renderConversationList();
   await loadConversationMessages(conv.id);
@@ -131,9 +134,41 @@ function mapConversationSummary(item) {
     providerName: item.provider || "",
     providerId: item.provider_id || 0,
     model: item.model || els.chatModel.value,
+    temperature: Number(item.temperature) > 0 ? Number(item.temperature) : 0.7,
+    maxTokens: Number(item.max_tokens) > 0 ? Number(item.max_tokens) : 0,
+    systemPrompt: item.system_prompt || "",
     updatedAt: item.updated_at || "",
     messages: [],
   };
+}
+
+export async function saveActiveConversationSettings() {
+  const conv = appState.conversations.find((c) => c.id === appState.activeConversationId);
+  if (!conv) return;
+  const providerID = Number(conv.providerId) || 0;
+  const model = String(conv.model || "").trim();
+  if (!model) return;
+
+  const payload = {
+    conversation_id: conv.id,
+    provider_id: providerID,
+    model,
+    temperature: Number(conv.temperature) > 0 ? Number(conv.temperature) : 0.7,
+    max_tokens: Math.max(0, Number(conv.maxTokens) || 0),
+    system_prompt: String(conv.systemPrompt || ""),
+  };
+
+  const updated = await bridge.callService("UpdateConversationSettings", payload);
+  if (updated && updated.id === conv.id) {
+    conv.providerId = Number(updated.provider_id) || 0;
+    conv.providerName = updated.provider || conv.providerName;
+    conv.model = updated.model || conv.model;
+    conv.temperature = Number(updated.temperature) > 0 ? Number(updated.temperature) : conv.temperature;
+    conv.maxTokens = Number(updated.max_tokens) > 0 ? Number(updated.max_tokens) : 0;
+    conv.systemPrompt = updated.system_prompt || "";
+    conv.updatedAt = updated.updated_at || conv.updatedAt;
+    renderConversationList();
+  }
 }
 
 async function reloadConversationList(preferredConversationID = 0) {
@@ -327,11 +362,17 @@ export async function searchConversations(query) {
 }
 
 export async function newConversation() {
-  const prov    = getActiveProvider();
+  const selectedModelRaw = String(els.chatModel.value || "");
+  const unifiedSelection = selectedModelRaw.includes("::") ? selectedModelRaw.split("::") : null;
+  const selectedProviderFromModel = unifiedSelection ? Number(unifiedSelection[0]) || 0 : 0;
+  const selectedModel = unifiedSelection ? (unifiedSelection[1] || "") : selectedModelRaw;
+  const prov    = selectedProviderFromModel > 0
+    ? (appState.providers.find((p) => p.id === selectedProviderFromModel) || null)
+    : getActiveProvider();
   const created = await bridge.callService("CreateConversation", {
     title:       "New chat",
     provider_id: prov ? prov.id : 0,
-    model:       els.chatModel.value,
+    model:       selectedModel,
   });
   if (!created || typeof created.id !== "number") {
     els.status.textContent = "create conversation failed";
@@ -342,7 +383,10 @@ export async function newConversation() {
     title:        created.title || `Conversation ${appState.conversations.length + 1}`,
     providerName: prov ? prov.name : "",
     providerId:   prov ? prov.id : 0,
-    model:        created.model || els.chatModel.value,
+    model:        created.model || selectedModel,
+    temperature:  Number(created.temperature) > 0 ? Number(created.temperature) : 0.7,
+    maxTokens:    Number(created.max_tokens) > 0 ? Number(created.max_tokens) : 0,
+    systemPrompt: created.system_prompt || "",
     updatedAt:    created.updated_at || new Date().toISOString(),
     messages:     [],
   };

@@ -114,6 +114,9 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			title TEXT NOT NULL,
 			provider_id INTEGER REFERENCES providers(id) ON DELETE SET NULL,
 			model TEXT NOT NULL,
+			temperature REAL NOT NULL DEFAULT 0.7,
+			max_tokens INTEGER NOT NULL DEFAULT 0,
+			system_prompt TEXT NOT NULL DEFAULT '',
 			created_at TEXT NOT NULL DEFAULT (datetime('now')),
 			updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 		);`,
@@ -185,6 +188,59 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			return fmt.Errorf("migration failed: %w", err)
 		}
 	}
+
+	if err := ensureConversationPreferenceColumns(ctx, db); err != nil {
+		return err
+	}
+	return nil
+}
+
+func ensureConversationPreferenceColumns(ctx context.Context, db *sql.DB) error {
+	rows, err := db.QueryContext(ctx, `PRAGMA table_info(conversations)`)
+	if err != nil {
+		return fmt.Errorf("pragma table_info conversations: %w", err)
+	}
+	defer rows.Close()
+
+	hasTemperature := false
+	hasMaxTokens := false
+	hasSystemPrompt := false
+	for rows.Next() {
+		var cid, notnull, pk int
+		var name, typ string
+		var dflt sql.NullString
+		if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
+			return err
+		}
+		switch name {
+		case "temperature":
+			hasTemperature = true
+		case "max_tokens":
+			hasMaxTokens = true
+		case "system_prompt":
+			hasSystemPrompt = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	if !hasTemperature {
+		if _, err := db.ExecContext(ctx, `ALTER TABLE conversations ADD COLUMN temperature REAL NOT NULL DEFAULT 0.7`); err != nil {
+			return fmt.Errorf("add conversations.temperature: %w", err)
+		}
+	}
+	if !hasMaxTokens {
+		if _, err := db.ExecContext(ctx, `ALTER TABLE conversations ADD COLUMN max_tokens INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return fmt.Errorf("add conversations.max_tokens: %w", err)
+		}
+	}
+	if !hasSystemPrompt {
+		if _, err := db.ExecContext(ctx, `ALTER TABLE conversations ADD COLUMN system_prompt TEXT NOT NULL DEFAULT ''`); err != nil {
+			return fmt.Errorf("add conversations.system_prompt: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -241,6 +297,9 @@ func migrateConversationsProviderID(ctx context.Context, db *sql.DB) error {
 			title TEXT NOT NULL,
 			provider_id INTEGER REFERENCES providers(id) ON DELETE SET NULL,
 			model TEXT NOT NULL,
+			temperature REAL NOT NULL DEFAULT 0.7,
+			max_tokens INTEGER NOT NULL DEFAULT 0,
+			system_prompt TEXT NOT NULL DEFAULT '',
 			created_at TEXT NOT NULL DEFAULT (datetime('now')),
 			updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 		);`,

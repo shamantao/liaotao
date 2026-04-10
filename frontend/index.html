@@ -61,16 +61,23 @@
                 <!-- Populated dynamically from providers DB -->
               </select>
               <label for="chat-model">Model</label>
+              <input id="chat-model-filter" type="search" placeholder="Filter models" aria-label="Filter models">
               <select id="chat-model">
                 <option value="gpt-4o-mini">gpt-4o-mini</option>
                 <option value="gpt-4.1-mini">gpt-4.1-mini</option>
                 <option value="mistral-small">mistral-small</option>
                 <option value="llama3.2">llama3.2</option>
               </select>
+              <label for="chat-temperature">Temp</label>
+              <input id="chat-temperature" type="number" min="0" max="2" step="0.1" value="0.7">
+              <label for="chat-max-tokens">Max tokens</label>
+              <input id="chat-max-tokens" type="number" min="0" max="131072" step="1" value="0">
+              <input id="chat-system-prompt" type="text" placeholder="System prompt for this conversation" aria-label="System prompt for this conversation">
               <button class="action-btn icon-only-btn" id="refresh-models-btn" type="button" title="Refresh models" aria-label="Refresh models">
                 <span aria-hidden="true">↻</span>
               </button>
             </div>
+            <div class="last-used-models" id="last-used-models"></div>
           </div>
         </main>
       </div>

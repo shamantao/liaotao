@@ -6,6 +6,8 @@
 - **CONV-03**: Conversation sidebar now groups items by recency (`Today`, `Yesterday`, `This Week`, `Older`) and shows a compact date/time line below each title.
 - **CONV-07**: Conversation search added in the sidebar with backend search across both conversation titles and message content.
 - **CONV-08**: Each message now exposes token stats in the chat history footer, including input/output token counts, generation duration, and throughput when available.
+- **MOD-01**: Chat model selector now supports provider-grouped listing in Automat mode with a live filter input.
+- **MOD-04**: "Last used" model chips were added below the prompt area for one-click reuse.
 
 ### Changed
 - **CONV-05**: Conversations can now be renamed inline from the sidebar.
@@ -13,6 +15,10 @@
 - Conversation sidebar interactions now keep the active conversation synchronized after search and rename flows.
 - Added regression/unit coverage for conversation rename, search, and auto-title behaviors.
 - Message persistence now stores per-message token telemetry in the existing `messages.token_stats` JSON column, with estimated values used when providers do not return full metrics.
+- **MOD-02**: Conversation records now persist model/provider runtime preferences so each chat restores its own generation setup.
+- **MOD-03**: Provider entries now surface a connected/disconnected/unknown status indicator based on last-known checks.
+- **MOD-06**: Temperature and max tokens are now configurable per conversation and propagated to generation requests.
+- **MOD-07**: System prompt is now stored per conversation and injected into provider requests.
 
 ## [0.1.5] - 2026-04-10
 
