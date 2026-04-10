@@ -1,0 +1,18 @@
+# project.toml — Developer override (copy to project.toml, never commit)
+# Overrides default.toml to use relative paths during local development.
+# Keeps data, logs, and temp files inside the project directory.
+
+[path_manager]
+allowed_roots = [
+  "$HOME/Downloads",
+  "."
+]
+temp_dir    = ".tmp"
+logs_dir    = "logs"
+reports_dir = "reports"
+
+[database]
+path = "data/liaotao.db"
+
+[app]
+mode = "debug"

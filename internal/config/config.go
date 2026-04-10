@@ -103,10 +103,38 @@ func Load() (*AppConfig, error) {
 	// Layer 4: environment variables (APP__ prefix)
 	applyEnvOverrides(cfg)
 
+	// Expand $HOME / ~ in all path fields so default.toml stays portable.
+	expandHomeDirPaths(cfg)
+
 	if err := validate(cfg); err != nil {
 		return nil, err
 	}
 	return cfg, nil
+}
+
+// expandHomeDirPaths replaces $HOME and ~/ in path fields with the actual home directory.
+// This keeps config/default.toml portable across machines and users.
+func expandHomeDirPaths(cfg *AppConfig) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	exp := func(s string) string {
+		s = strings.ReplaceAll(s, "$HOME", home)
+		if strings.HasPrefix(s, "~/") {
+			s = filepath.Join(home, s[2:])
+		}
+		return s
+	}
+
+	pm := &cfg.PathManager
+	for i, r := range pm.AllowedRoots {
+		pm.AllowedRoots[i] = exp(r)
+	}
+	pm.TempDir = exp(pm.TempDir)
+	pm.LogsDir = exp(pm.LogsDir)
+	pm.ReportsDir = exp(pm.ReportsDir)
+	cfg.Database.Path = exp(cfg.Database.Path)
 }
 
 func loadTOML(path string, cfg *AppConfig) error {

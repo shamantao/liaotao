@@ -9,7 +9,7 @@
 # ---------------------------------------------------------------------------
 [app]
 name       = "liaotao"
-version    = "0.1.0"
+version    = "0.1.2"
 mode       = "debug"   # debug | normal
 language   = "fr"
 
@@ -24,15 +24,17 @@ strict_mode         = false
 [path_manager]
 # Restrict ALL write operations to these root directories.
 # Any path outside these roots will be rejected at runtime.
+# Use $HOME to reference the current user's home directory (portable).
 allowed_roots = [
   "$HOME/Downloads",
-  "/Users/phil/kDrive/dev/ai-projects/liaotao"
+  "$HOME/.config/liaotao"
 ]
 
 # Runtime directories — created automatically on first run.
-temp_dir    = "/Users/phil/kDrive/dev/ai-projects/liaotao/.tmp"
-logs_dir    = "/Users/phil/kDrive/dev/ai-projects/liaotao/logs"
-reports_dir = "/Users/phil/kDrive/dev/ai-projects/liaotao/reports"
+# Override in config/project.toml (dev) or ~/.config/liaotao/user.toml (user).
+temp_dir    = "$HOME/.config/liaotao/.tmp"
+logs_dir    = "$HOME/.config/liaotao/logs"
+reports_dir = "$HOME/.config/liaotao/reports"
 
 # Collision strategy when output file already exists.
 # Options: increment | suffix | short_hash
@@ -43,7 +45,7 @@ trim_whitespace   = true
 
 # ---------------------------------------------------------------------------
 [database]
-path            = "/Users/phil/kDrive/dev/ai-projects/liaotao/data/liaotao.db"
+path            = "$HOME/.config/liaotao/data/liaotao.db"
 busy_timeout_ms = 5000
 journal_mode    = "WAL"
 foreign_keys    = true

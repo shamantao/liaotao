@@ -47,6 +47,7 @@ export async function loadPersistedConversations() {
     id:           item.id,
     title:        item.title || `Conversation ${item.id}`,
     providerName: item.provider || "",
+    providerId:   item.provider_id || 0,
     model:        item.model   || els.chatModel.value,
     messages:     [],
   }));
@@ -59,7 +60,7 @@ export async function newConversation() {
   const prov    = getActiveProvider();
   const created = await bridge.callService("CreateConversation", {
     title:       "New chat",
-    provider_id: prov ? prov.name : "default",
+    provider_id: prov ? prov.id : 0,
     model:       els.chatModel.value,
   });
   if (!created || typeof created.id !== "number") {
@@ -70,6 +71,7 @@ export async function newConversation() {
     id:           created.id,
     title:        created.title || `Conversation ${appState.conversations.length + 1}`,
     providerName: prov ? prov.name : "",
+    providerId:   prov ? prov.id : 0,
     model:        created.model || els.chatModel.value,
     messages:     [],
   };

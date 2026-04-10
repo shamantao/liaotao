@@ -13,18 +13,21 @@ import (
 
 // Service centralizes backend methods exposed to the frontend.
 type Service struct {
-	db       *sql.DB
-	client   *http.Client
-	cancelMu sync.Mutex
-	cancels  map[string]context.CancelFunc
+	db           *sql.DB
+	client       *http.Client
+	cancelMu     sync.Mutex
+	cancels      map[string]context.CancelFunc
+	allowedRoots []string // path sandbox for built-in read_file tool
 }
 
 // NewService creates the binding service shared by all MVP domains.
-func NewService(db *sql.DB) *Service {
+// allowedRoots is optional: pass cfg.PathManager.AllowedRoots to enable read_file sandboxing.
+func NewService(db *sql.DB, allowedRoots ...string) *Service {
 	return &Service{
-		db:      db,
-		client:  &http.Client{},
-		cancels: make(map[string]context.CancelFunc),
+		db:           db,
+		client:       &http.Client{},
+		cancels:      make(map[string]context.CancelFunc),
+		allowedRoots: allowedRoots,
 	}
 }
 
@@ -41,17 +44,18 @@ func (s *Service) Health(ctx context.Context) (map[string]any, error) {
 
 // ConversationSummary is a thin list item payload for the sidebar.
 type ConversationSummary struct {
-	ID        int64  `json:"id"`
-	Title     string `json:"title"`
-	Provider  string `json:"provider"`
-	Model     string `json:"model"`
-	UpdatedAt string `json:"updated_at"`
+	ID         int64  `json:"id"`
+	Title      string `json:"title"`
+	ProviderID int64  `json:"provider_id"` // numeric FK; 0 = no provider
+	Provider   string `json:"provider"`    // resolved display name
+	Model      string `json:"model"`
+	UpdatedAt  string `json:"updated_at"`
 }
 
 // CreateConversationPayload is the frontend request payload to create a conversation.
 type CreateConversationPayload struct {
 	Title      string `json:"title"`
-	ProviderID string `json:"provider_id"`
+	ProviderID int64  `json:"provider_id"` // numeric ID from providers table; 0 = no provider
 	Model      string `json:"model"`
 }
 
@@ -80,20 +84,17 @@ func (s *Service) CreateConversation(ctx context.Context, payload CreateConversa
 	if title == "" {
 		title = "New chat"
 	}
-	providerID := payload.ProviderID
-	if providerID == "" {
-		providerID = "openai-compatible"
-	}
 	model := payload.Model
 	if model == "" {
 		model = "gpt-4o-mini"
 	}
 
+	// NULLIF(provider_id, 0) stores NULL when no provider is selected.
 	res, err := s.db.ExecContext(
 		ctx,
-		`INSERT INTO conversations (title, provider_id, model) VALUES (?, ?, ?)`,
+		`INSERT INTO conversations (title, provider_id, model) VALUES (?, NULLIF(?, 0), ?)`,
 		title,
-		providerID,
+		payload.ProviderID,
 		model,
 	)
 	if err != nil {
@@ -107,9 +108,12 @@ func (s *Service) CreateConversation(ctx context.Context, payload CreateConversa
 	item := ConversationSummary{}
 	err = s.db.QueryRowContext(
 		ctx,
-		`SELECT id, title, provider_id, model, updated_at FROM conversations WHERE id = ?`,
+		`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model, c.updated_at
+		 FROM conversations c
+		 LEFT JOIN providers p ON p.id = c.provider_id
+		 WHERE c.id = ?`,
 		id,
-	).Scan(&item.ID, &item.Title, &item.Provider, &item.Model, &item.UpdatedAt)
+	).Scan(&item.ID, &item.Title, &item.ProviderID, &item.Provider, &item.Model, &item.UpdatedAt)
 	if err != nil {
 		return ConversationSummary{}, err
 	}
@@ -126,9 +130,10 @@ func (s *Service) ListConversations(ctx context.Context, payload ListConversatio
 	}
 	rows, err := s.db.QueryContext(
 		ctx,
-		`SELECT id, title, provider_id, model, updated_at
-		 FROM conversations
-		 ORDER BY updated_at DESC
+		`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model, c.updated_at
+		 FROM conversations c
+		 LEFT JOIN providers p ON p.id = c.provider_id
+		 ORDER BY c.updated_at DESC
 		 LIMIT ?`,
 		limit,
 	)
@@ -140,7 +145,7 @@ func (s *Service) ListConversations(ctx context.Context, payload ListConversatio
 	items := make([]ConversationSummary, 0, limit)
 	for rows.Next() {
 		var item ConversationSummary
-		if err := rows.Scan(&item.ID, &item.Title, &item.Provider, &item.Model, &item.UpdatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.Title, &item.ProviderID, &item.Provider, &item.Model, &item.UpdatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, item)

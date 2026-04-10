@@ -54,7 +54,7 @@ func main() {
 	defer database.Close()
 
 	// 5. Build backend bindings service (chat/providers/settings/conversations)
-	bindingService := bindings.NewService(database)
+	bindingService := bindings.NewService(database, cfg.PathManager.AllowedRoots...)
 	appLogger.Info("backend services ready", "has_bindings", bindingService != nil)
 
 	frontendFS, err := fs.Sub(assets, "frontend")

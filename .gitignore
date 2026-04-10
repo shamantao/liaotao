@@ -23,6 +23,9 @@ wailsjs/
 /logs/
 /data/
 
+# Developer local config override (copy from config/project.toml.example)
+/config/project.toml
+
 # System specific
 .DS_Store
 Thumbs.db
