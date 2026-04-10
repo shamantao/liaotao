@@ -64,6 +64,20 @@ body {
   border-bottom: 1px solid var(--border);
   background: rgba(0, 0, 0, 0.18);
   min-height: 58px;
+
+  .conversation-search {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: rgba(18, 32, 51, 0.9);
+    color: var(--text);
+    padding: 0.45rem 0.55rem;
+    font-size: 0.82rem;
+  }
+
+  .conversation-search::placeholder {
+    color: var(--text-dim);
+  }
 }
 
 .brand {
@@ -74,6 +88,21 @@ body {
   letter-spacing: 0.03em;
 }
 
+
+  .conversation-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .conversation-group-title {
+    margin: 0.2rem 0 0;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    opacity: 0.85;
+  }
 .brand-logo {
   width: 34px;
   height: 34px;
@@ -93,9 +122,31 @@ body {
 .tab-btn {
   border: 1px solid var(--border);
   background: transparent;
-  color: var(--text-dim);
+    font-size: 0.86rem;
   border-radius: 10px;
   padding: 0.45rem 0.75rem;
+
+  .conversation-main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    flex: 1;
+  }
+
+  .conversation-meta {
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    opacity: 0.8;
+    line-height: 1.2;
+  }
+
+  .conversation-row-actions {
+    display: inline-flex;
+    gap: 0.25rem;
+  }
+
+  .conversation-rename-btn,
   cursor: pointer;
 }
 
@@ -111,15 +162,38 @@ body {
   font-size: 0.85rem;
   justify-self: end;
 }
-
-/* ── Tab panels ────────────────────────────────────────────────────── */
+  .conversation-item:hover .conversation-delete-btn,
+  .conversation-item.active .conversation-delete-btn,
+  .conversation-item:hover .conversation-rename-btn,
+  .conversation-item.active .conversation-rename-btn {
 .tab-panel {
   display: none;
+
+  .conversation-rename-btn:hover {
+    color: var(--accent);
+    border-color: var(--border);
+  }
   flex: 1;
   min-height: 0;
 }
 
 .tab-panel.active {
+
+  .conversation-rename-input {
+    width: 100%;
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    background: #122033;
+    color: var(--text);
+    padding: 0.28rem 0.45rem;
+    font-size: 0.84rem;
+  }
+
+  .conversation-empty {
+    margin: 0.35rem 0;
+    color: var(--text-dim);
+    font-size: 0.82rem;
+  }
   display: block;
   height: 100%;
 }
@@ -281,7 +355,10 @@ body {
 
 /* ── Sidebar collapsed state ───────────────────────────────────────── */
 .app-shell.sidebar-collapsed .sidebar h3,
-.app-shell.sidebar-collapsed .conversation-item .label {
+.app-shell.sidebar-collapsed .conversation-item .label,
+.app-shell.sidebar-collapsed .conversation-search,
+.app-shell.sidebar-collapsed .conversation-main,
+.app-shell.sidebar-collapsed .conversation-group-title {
   display: none;
 }
 

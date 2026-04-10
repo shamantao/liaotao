@@ -9,6 +9,7 @@ package bindings
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"testing"
 
 	"liaotao/internal/db"
@@ -28,6 +29,174 @@ func newConversationTestDB(t *testing.T) *sql.DB {
 		t.Fatalf("apply schema: %v", err)
 	}
 	return database
+}
+
+// TestConversation_RenameConversation verifies title update and refreshed ordering timestamp.
+func TestConversation_RenameConversation(t *testing.T) {
+	ctx := context.Background()
+	database := newConversationTestDB(t)
+	svc := NewService(database)
+
+	conv, err := svc.CreateConversation(ctx, CreateConversationPayload{
+		Title:      "Initial title",
+		ProviderID: 0,
+		Model:      "gpt-4o-mini",
+	})
+	if err != nil {
+		t.Fatalf("CreateConversation: %v", err)
+	}
+
+	updated, err := svc.RenameConversation(ctx, RenameConversationPayload{
+		ConversationID: conv.ID,
+		Title:          "Renamed title",
+	})
+	if err != nil {
+		t.Fatalf("RenameConversation: %v", err)
+	}
+	if updated.Title != "Renamed title" {
+		t.Errorf("updated title = %q, want %q", updated.Title, "Renamed title")
+	}
+
+	list, err := svc.ListConversations(ctx, ListConversationsPayload{Limit: 10})
+	if err != nil {
+		t.Fatalf("ListConversations: %v", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("expected 1 conversation, got %d", len(list))
+	}
+	if list[0].Title != "Renamed title" {
+		t.Errorf("listed title = %q, want %q", list[0].Title, "Renamed title")
+	}
+}
+
+// TestConversation_SearchConversations verifies title/content search behavior.
+func TestConversation_SearchConversations(t *testing.T) {
+	ctx := context.Background()
+	database := newConversationTestDB(t)
+	svc := NewService(database)
+
+	alpha, err := svc.CreateConversation(ctx, CreateConversationPayload{
+		Title:      "Alpha planning",
+		ProviderID: 0,
+		Model:      "gpt-4o-mini",
+	})
+	if err != nil {
+		t.Fatalf("CreateConversation alpha: %v", err)
+	}
+	beta, err := svc.CreateConversation(ctx, CreateConversationPayload{
+		Title:      "Beta notes",
+		ProviderID: 0,
+		Model:      "gpt-4o-mini",
+	})
+	if err != nil {
+		t.Fatalf("CreateConversation beta: %v", err)
+	}
+
+	if err := svc.SaveMessage(ctx, MessagePayload{
+		ConversationID: beta.ID,
+		Role:           "user",
+		Content:        "Need roadmap details for phase two",
+	}); err != nil {
+		t.Fatalf("SaveMessage: %v", err)
+	}
+
+	t.Run("title match", func(t *testing.T) {
+		items, err := svc.SearchConversations(ctx, SearchConversationsPayload{Query: "alpha", Limit: 10})
+		if err != nil {
+			t.Fatalf("SearchConversations title: %v", err)
+		}
+		if len(items) != 1 || items[0].ID != alpha.ID {
+			t.Fatalf("title search mismatch: got %+v", items)
+		}
+	})
+
+	t.Run("message content match", func(t *testing.T) {
+		items, err := svc.SearchConversations(ctx, SearchConversationsPayload{Query: "roadmap", Limit: 10})
+		if err != nil {
+			t.Fatalf("SearchConversations content: %v", err)
+		}
+		if len(items) != 1 || items[0].ID != beta.ID {
+			t.Fatalf("content search mismatch: got %+v", items)
+		}
+	})
+
+	t.Run("blank query behaves as list", func(t *testing.T) {
+		items, err := svc.SearchConversations(ctx, SearchConversationsPayload{Query: "   ", Limit: 10})
+		if err != nil {
+			t.Fatalf("SearchConversations blank: %v", err)
+		}
+		if len(items) < 2 {
+			t.Fatalf("blank query should return full list, got %d", len(items))
+		}
+	})
+
+	t.Run("trimmed query", func(t *testing.T) {
+		items, err := svc.SearchConversations(ctx, SearchConversationsPayload{Query: "  BETA  ", Limit: 10})
+		if err != nil {
+			t.Fatalf("SearchConversations trimmed: %v", err)
+		}
+		if len(items) != 1 || !strings.Contains(strings.ToLower(items[0].Title), "beta") {
+			t.Fatalf("trimmed search mismatch: got %+v", items)
+		}
+	})
+}
+
+// TestConversation_AutoTitleFromFirstUserMessage verifies that a default
+// conversation title is replaced by the first user message preview.
+func TestConversation_AutoTitleFromFirstUserMessage(t *testing.T) {
+	ctx := context.Background()
+	database := newConversationTestDB(t)
+	svc := NewService(database)
+
+	conv, err := svc.CreateConversation(ctx, CreateConversationPayload{
+		Title:      "New chat",
+		ProviderID: 0,
+		Model:      "gpt-4o-mini",
+	})
+	if err != nil {
+		t.Fatalf("CreateConversation: %v", err)
+	}
+
+	if err := svc.SaveMessage(ctx, MessagePayload{
+		ConversationID: conv.ID,
+		Role:           "user",
+		Content:        "Plan migration strategy for MCP search and history UX",
+	}); err != nil {
+		t.Fatalf("SaveMessage user: %v", err)
+	}
+
+	list, err := svc.ListConversations(ctx, ListConversationsPayload{Limit: 10})
+	if err != nil {
+		t.Fatalf("ListConversations: %v", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("expected 1 conversation, got %d", len(list))
+	}
+	if !strings.HasPrefix(list[0].Title, "Plan migration strategy") {
+		t.Fatalf("expected auto-title from first message, got %q", list[0].Title)
+	}
+
+	// Manual rename must stay stable after additional user messages.
+	if _, err := svc.RenameConversation(ctx, RenameConversationPayload{
+		ConversationID: conv.ID,
+		Title:          "Custom title",
+	}); err != nil {
+		t.Fatalf("RenameConversation: %v", err)
+	}
+	if err := svc.SaveMessage(ctx, MessagePayload{
+		ConversationID: conv.ID,
+		Role:           "user",
+		Content:        "A second user message should not override custom title",
+	}); err != nil {
+		t.Fatalf("SaveMessage second user: %v", err)
+	}
+	list, err = svc.ListConversations(ctx, ListConversationsPayload{Limit: 10})
+	if err != nil {
+		t.Fatalf("ListConversations second pass: %v", err)
+	}
+	if list[0].Title != "Custom title" {
+		t.Fatalf("custom title should be preserved, got %q", list[0].Title)
+	}
 }
 
 // TestConversation_ProviderIDStoredAsInteger verifies that CreateConversation

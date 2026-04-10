@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.1.6] - 2026-04-10
+
+### Added
+- **CONV-03**: Conversation sidebar now groups items by recency (`Today`, `Yesterday`, `This Week`, `Older`) and shows a compact date/time line below each title.
+- **CONV-07**: Conversation search added in the sidebar with backend search across both conversation titles and message content.
+
+### Changed
+- **CONV-05**: Conversations can now be renamed inline from the sidebar.
+- New conversations automatically adopt a preview title from the first user message while preserving later manual renames.
+- Conversation sidebar interactions now keep the active conversation synchronized after search and rename flows.
+- Added regression/unit coverage for conversation rename, search, and auto-title behaviors.
+
 ## [0.1.5] - 2026-04-10
 
 ### Added

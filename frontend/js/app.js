@@ -18,7 +18,7 @@ import {
   copyMessage, editMessage, regenerateMessage, deleteMessage,
   attachResponseMeta, appendToolCall, updateToolResult,
 } from "./chat.js";
-import { newConversation, loadPersistedConversations } from "./conversations.js";
+import { newConversation, loadPersistedConversations, searchConversations } from "./conversations.js";
 import { loadMCPServers, initMCPFormListeners } from "./mcp.js";
 
 // ── Settings navigation ────────────────────────────────────────────────────
@@ -119,6 +119,16 @@ function bindEvents() {
   els.prompt.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendPrompt(); }
   });
+
+  if (els.conversationSearch) {
+    let searchDebounce = null;
+    els.conversationSearch.addEventListener("input", () => {
+      if (searchDebounce) clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(() => {
+        searchConversations(els.conversationSearch.value);
+      }, 180);
+    });
+  }
 
   els.settingsNavBtns.forEach((btn) =>
     btn.addEventListener("click", () => switchSettingsSection(btn.dataset.section)));

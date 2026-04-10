@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 )
 
@@ -62,6 +63,18 @@ type CreateConversationPayload struct {
 // ListConversationsPayload controls paging for conversation listing.
 type ListConversationsPayload struct {
 	Limit int `json:"limit"`
+}
+
+// SearchConversationsPayload controls title/content search for conversations.
+type SearchConversationsPayload struct {
+	Query string `json:"query"`
+	Limit int    `json:"limit"`
+}
+
+// RenameConversationPayload renames one conversation.
+type RenameConversationPayload struct {
+	ConversationID int64  `json:"conversation_id"`
+	Title          string `json:"title"`
 }
 
 // ListMessagesPayload controls message listing for one conversation.
@@ -124,19 +137,54 @@ func (s *Service) CreateConversation(ctx context.Context, payload CreateConversa
 // ListConversations returns conversations ordered by latest activity.
 
 func (s *Service) ListConversations(ctx context.Context, payload ListConversationsPayload) ([]ConversationSummary, error) {
-	limit := payload.Limit
+	return s.listConversationsWithQuery(ctx, "", payload.Limit)
+}
+
+// SearchConversations returns conversations matching title or message content.
+func (s *Service) SearchConversations(ctx context.Context, payload SearchConversationsPayload) ([]ConversationSummary, error) {
+	return s.listConversationsWithQuery(ctx, payload.Query, payload.Limit)
+}
+
+func (s *Service) listConversationsWithQuery(ctx context.Context, query string, limit int) ([]ConversationSummary, error) {
 	if limit <= 0 {
 		limit = 50
 	}
-	rows, err := s.db.QueryContext(
-		ctx,
-		`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model, c.updated_at
-		 FROM conversations c
-		 LEFT JOIN providers p ON p.id = c.provider_id
-		 ORDER BY c.updated_at DESC
-		 LIMIT ?`,
-		limit,
+
+	trimmed := strings.TrimSpace(query)
+	var (
+		rows *sql.Rows
+		err  error
 	)
+	if trimmed == "" {
+		rows, err = s.db.QueryContext(
+			ctx,
+			`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model, c.updated_at
+			 FROM conversations c
+			 LEFT JOIN providers p ON p.id = c.provider_id
+			 ORDER BY c.updated_at DESC
+			 LIMIT ?`,
+			limit,
+		)
+	} else {
+		needle := "%" + strings.ToLower(trimmed) + "%"
+		rows, err = s.db.QueryContext(
+			ctx,
+			`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model, c.updated_at
+			 FROM conversations c
+			 LEFT JOIN providers p ON p.id = c.provider_id
+			 WHERE LOWER(c.title) LIKE ?
+			    OR EXISTS (
+			      SELECT 1 FROM messages m
+			      WHERE m.conversation_id = c.id
+			        AND LOWER(m.content) LIKE ?
+			    )
+			 ORDER BY c.updated_at DESC
+			 LIMIT ?`,
+			needle,
+			needle,
+			limit,
+		)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -154,6 +202,49 @@ func (s *Service) ListConversations(ctx context.Context, payload ListConversatio
 		return nil, err
 	}
 	return items, nil
+}
+
+// RenameConversation updates title and refreshes updated_at for one conversation.
+func (s *Service) RenameConversation(ctx context.Context, payload RenameConversationPayload) (ConversationSummary, error) {
+	if payload.ConversationID <= 0 {
+		return ConversationSummary{}, fmt.Errorf("conversation id must be > 0")
+	}
+	title := strings.TrimSpace(payload.Title)
+	if title == "" {
+		return ConversationSummary{}, fmt.Errorf("title is required")
+	}
+
+	res, err := s.db.ExecContext(
+		ctx,
+		`UPDATE conversations SET title = ?, updated_at = datetime('now') WHERE id = ?`,
+		title,
+		payload.ConversationID,
+	)
+	if err != nil {
+		return ConversationSummary{}, err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return ConversationSummary{}, err
+	}
+	if affected == 0 {
+		return ConversationSummary{}, fmt.Errorf("conversation %d not found", payload.ConversationID)
+	}
+
+	item := ConversationSummary{}
+	err = s.db.QueryRowContext(
+		ctx,
+		`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model, c.updated_at
+		 FROM conversations c
+		 LEFT JOIN providers p ON p.id = c.provider_id
+		 WHERE c.id = ?`,
+		payload.ConversationID,
+	).Scan(&item.ID, &item.Title, &item.ProviderID, &item.Provider, &item.Model, &item.UpdatedAt)
+	if err != nil {
+		return ConversationSummary{}, err
+	}
+
+	return item, nil
 }
 
 // ListMessages returns messages for a conversation ordered by creation.
@@ -227,6 +318,22 @@ func (s *Service) SaveMessage(ctx context.Context, payload MessagePayload) error
 		payload.Content,
 	); err != nil {
 		return err
+	}
+
+	if payload.Role == "user" {
+		if _, err := tx.ExecContext(
+			ctx,
+			`UPDATE conversations
+			 SET title = CASE
+			   WHEN title = 'New chat' THEN SUBSTR(TRIM(REPLACE(?, char(10), ' ')), 1, 80)
+			   ELSE title
+			 END
+			 WHERE id = ?`,
+			payload.Content,
+			payload.ConversationID,
+		); err != nil {
+			return err
+		}
 	}
 
 	if _, err := tx.ExecContext(

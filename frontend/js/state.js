@@ -14,6 +14,7 @@ export const appState = {
   sidebarCollapsed:    false,
   sidebarWidth:        290,
   expandedSidebarWidth: 290,
+  conversationSearchQuery: "",
   providers:           [],     // ProviderRecord[] cached from DB
   activeProviderId:    null,   // number | null — currently selected provider
   settingsSection:     "general",
@@ -33,6 +34,7 @@ export const els = {
   send:           document.getElementById("send-btn"),
   stop:           document.getElementById("stop-btn"),
   newChat:        document.getElementById("new-chat-btn"),
+  conversationSearch: document.getElementById("conversation-search"),
   chatProvider:   document.getElementById("chat-provider"),
   chatModel:      document.getElementById("chat-model"),
   refreshModels:  document.getElementById("refresh-models-btn"),
