@@ -61,6 +61,17 @@ func ensureDatabasePath(cfg *config.AppConfig) error {
 	if err := os.MkdirAll(dbDir, 0o755); err != nil {
 		return fmt.Errorf("create database dir: %w", err)
 	}
+
+	// Restrict DB file permissions to owner-only (0600) so cloud sync tools
+	// and other local users cannot read API keys stored in the providers table.
+	// If the file does not exist yet, SQLite will create it — permissions are
+	// applied on first open via the MkdirAll above; we also enforce on every
+	// startup to recover from accidental permission widening.
+	if _, err := os.Stat(dbPath); err == nil {
+		if err := os.Chmod(dbPath, 0o600); err != nil {
+			return fmt.Errorf("secure database permissions: %w", err)
+		}
+	}
 	return nil
 }
 
