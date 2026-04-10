@@ -10,7 +10,7 @@ import {
   loadProviders, loadProviderProfiles, loadModels,
   updateChatProviderSelector,
   saveProvider, deleteCurrentProvider, showNewProviderForm,
-  testProviderConnection, applyPreset,
+  testProviderConnection, applyPreset, updateProviderURLPlaceholder, syncChatModelSelector,
 } from "./providers.js";
 import {
   renderMessages, sendPrompt, cancelGeneration,
@@ -88,16 +88,28 @@ function bindEvents() {
   els.send.addEventListener("click", sendPrompt);
   els.stop.addEventListener("click", cancelGeneration);
   els.sidebarToggle.addEventListener("click", toggleSidebar);
-  els.refreshModels.addEventListener("click", loadModels);
+  els.refreshModels.addEventListener("click", () => loadModels({ force: true }));
 
   els.chatProvider.addEventListener("change", async () => {
     // Parse the selected value. "0" is the Automat (router) option — must stay 0, not coerced to null.
     const raw = els.chatProvider.value;
     const newId = raw === "" ? null : Number(raw);
     appState.activeProviderId = newId;
+    const conv = appState.conversations.find((c) => c.id === appState.activeConversationId);
+    if (conv) {
+      conv.providerId = newId || 0;
+      conv.providerName = newId > 0
+        ? (appState.providers.find((p) => p.id === newId)?.name || "")
+        : "";
+      conv.model = "";
+    }
     persistSettingsToStorage();
-    await loadModels();
+    syncChatModelSelector("");
   });
+
+  const ensureModelsLoaded = () => loadModels({ preferredModel: els.chatModel.value || "" });
+  els.chatModel.addEventListener("focus", ensureModelsLoaded);
+  els.chatModel.addEventListener("pointerdown", ensureModelsLoaded);
 
   els.chatModel.addEventListener("change", () => {
     const conv = appState.conversations.find((c) => c.id === appState.activeConversationId);
@@ -129,6 +141,7 @@ function bindEvents() {
   if (els.pfDeleteBtn)     els.pfDeleteBtn.addEventListener("click", deleteCurrentProvider);
   if (els.pfTestBtn)       els.pfTestBtn.addEventListener("click", testProviderConnection);
   if (els.pfPreset)        els.pfPreset.addEventListener("change", () => applyPreset(els.pfPreset.value));
+  if (els.pfType)          els.pfType.addEventListener("change", updateProviderURLPlaceholder);
 
   if (els.showMetaFooter) {
     els.showMetaFooter.addEventListener("change", () => {
@@ -183,7 +196,6 @@ async function init() {
   initMCPFormListeners();
   await loadProviders();
   await loadProviderProfiles();
-  await loadModels();
   await loadPersistedConversations();
 }
 

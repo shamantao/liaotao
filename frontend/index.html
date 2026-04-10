@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>liaotao</title>
+  <link rel="icon" type="image/svg+xml" href="./assets/logo-liaotao.svg">
   <link rel="stylesheet" href="./css/base.css">
   <link rel="stylesheet" href="./css/chat.css">
   <link rel="stylesheet" href="./css/settings.css">
@@ -14,7 +15,10 @@
 <body>
   <div class="app-shell" id="app-shell">
     <header class="topbar">
-      <div class="brand">liaotao</div>
+      <div class="brand">
+        <img class="brand-logo" src="./assets/logo-liaotao.svg" alt="Liaotao logo">
+        <span class="brand-name">liaotao</span>
+      </div>
       <nav class="tabs">
         <button class="tab-btn active" data-tab="chat">Chat</button>
         <button class="tab-btn" data-tab="settings">Settings</button>
@@ -30,32 +34,42 @@
               <h3>Conversations</h3>
               <button class="icon-btn" id="sidebar-toggle" title="Expand or collapse sidebar">☰</button>
             </div>
-            <button class="new-chat" id="new-chat-btn"><span class="new-chat-icon">＋</span> <span class="new-chat-label">New chat</span></button>
+            <button class="new-chat icon-only-btn" id="new-chat-btn" title="New chat" aria-label="New chat"><span class="new-chat-icon" aria-hidden="true">✚</span></button>
             <div class="conversation-list" id="conversation-list"></div>
           </aside>
           <div class="sidebar-resizer" id="sidebar-resizer" title="Resize sidebar"></div>
         </div>
 
         <main class="chat-main">
-          <div class="chat-toolbar">
-            <label for="chat-provider">Provider</label>
-            <select id="chat-provider">
-              <!-- Populated dynamically from providers DB -->
-            </select>
-            <label for="chat-model">Model</label>
-            <select id="chat-model">
-              <option value="gpt-4o-mini">gpt-4o-mini</option>
-              <option value="gpt-4.1-mini">gpt-4.1-mini</option>
-              <option value="mistral-small">mistral-small</option>
-              <option value="llama3.2">llama3.2</option>
-            </select>
-            <button class="action-btn" id="refresh-models-btn" type="button">Refresh models</button>
-          </div>
           <div class="messages" id="messages"></div>
           <div class="composer">
-            <textarea id="prompt" placeholder="Type message, Enter to send, Shift+Enter for newline"></textarea>
-            <button class="send-btn" id="send-btn">Send</button>
-            <button class="stop-btn" id="stop-btn">Stop</button>
+            <div class="composer-main">
+              <textarea id="prompt" placeholder="Type message, Enter to send, Shift+Enter for newline"></textarea>
+              <div class="composer-actions">
+                <button class="send-btn icon-only-btn" id="send-btn" type="button" title="Send" aria-label="Send">
+                  <span aria-hidden="true">➤</span>
+                </button>
+                <button class="stop-btn icon-only-btn" id="stop-btn" type="button" title="Stop generation" aria-label="Stop generation">
+                  <span aria-hidden="true">■</span>
+                </button>
+              </div>
+            </div>
+            <div class="chat-toolbar">
+              <label for="chat-provider">Provider</label>
+              <select id="chat-provider">
+                <!-- Populated dynamically from providers DB -->
+              </select>
+              <label for="chat-model">Model</label>
+              <select id="chat-model">
+                <option value="gpt-4o-mini">gpt-4o-mini</option>
+                <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+                <option value="mistral-small">mistral-small</option>
+                <option value="llama3.2">llama3.2</option>
+              </select>
+              <button class="action-btn icon-only-btn" id="refresh-models-btn" type="button" title="Refresh models" aria-label="Refresh models">
+                <span aria-hidden="true">↻</span>
+              </button>
+            </div>
           </div>
         </main>
       </div>
@@ -162,13 +176,13 @@
 
                   <!-- PROV-05: Test connection row -->
                   <div class="test-connection-row">
-                    <button type="button" class="action-btn secondary" id="pf-test-btn">Test connection</button>
+                    <button type="button" class="action-btn secondary icon-only-btn" id="pf-test-btn" title="Test connection" aria-label="Test connection">⚡</button>
                     <span id="pf-test-result" class="test-result"></span>
                   </div>
 
                   <div class="provider-form-actions">
-                    <button type="button" class="danger-btn hidden" id="pf-delete-btn">Delete</button>
-                    <button type="submit" class="action-btn">Save</button>
+                    <button type="button" class="danger-btn icon-only-btn hidden" id="pf-delete-btn" title="Delete provider" aria-label="Delete provider">🗑</button>
+                    <button type="submit" class="action-btn icon-only-btn" title="Save provider" aria-label="Save provider">✓</button>
                   </div>
                 </form>
               </div>
@@ -219,14 +233,14 @@
                     </label>
                   </div>
                   <div class="field-group test-connection-row">
-                    <button type="button" class="action-btn secondary" id="msf-ping-btn">Test connection</button>
-                    <button type="button" class="action-btn secondary" id="msf-copy-btn">Copy config</button>
+                    <button type="button" class="action-btn secondary icon-only-btn" id="msf-ping-btn" title="Test connection" aria-label="Test connection">⚡</button>
+                    <button type="button" class="action-btn secondary icon-only-btn" id="msf-copy-btn" title="Copy config" aria-label="Copy config">⧉</button>
                     <span id="msf-ping-status" class="test-result"></span>
                   </div>
                   <div id="msf-tools-list" class="tools-list hidden"></div>
                   <div class="provider-form-actions">
-                    <button type="button" class="danger-btn hidden" id="msf-delete-btn">Delete</button>
-                    <button type="submit" class="action-btn">Save</button>
+                    <button type="button" class="danger-btn icon-only-btn hidden" id="msf-delete-btn" title="Delete MCP server" aria-label="Delete MCP server">🗑</button>
+                    <button type="submit" class="action-btn icon-only-btn" title="Save MCP server" aria-label="Save MCP server">✓</button>
                   </div>
                   <p id="msf-status" class="form-status-msg"></p>
                 </form>

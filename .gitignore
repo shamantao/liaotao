@@ -3,6 +3,13 @@
 # Go
 /build/*
 !/build/config.yml
+!/build/appicon.png
+!/build/darwin/
+!/build/darwin/icons.icns
+!/build/windows/
+!/build/windows/icon.ico
+!/build/linux/
+!/build/linux/appicon.png
 /bin/
 *.exe
 *.exe~

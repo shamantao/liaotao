@@ -19,12 +19,29 @@ export function activeConversation() {
 function messageActions(index) {
   return `
     <div class="actions">
-      <button class="action-btn" onclick="window.liaotao.copyMessage(${index})">copy</button>
-      <button class="action-btn" onclick="window.liaotao.editMessage(${index})">edit</button>
-      <button class="action-btn" onclick="window.liaotao.regenerateMessage(${index})">regen</button>
-      <button class="action-btn" onclick="window.liaotao.deleteMessage(${index})">delete</button>
+      <button class="action-btn icon-only-btn" onclick="window.liaotao.copyMessage(${index})" title="Copy message" aria-label="Copy message">⧉</button>
+      <button class="action-btn icon-only-btn" onclick="window.liaotao.editMessage(${index})" title="Edit message" aria-label="Edit message">✎</button>
+      <button class="action-btn icon-only-btn" onclick="window.liaotao.regenerateMessage(${index})" title="Regenerate response" aria-label="Regenerate response">↺</button>
+      <button class="action-btn icon-only-btn" onclick="window.liaotao.deleteMessage(${index})" title="Delete message" aria-label="Delete message">🗑</button>
     </div>
   `;
+}
+
+function formatDuration(durationMS) {
+  if (!Number.isFinite(durationMS) || durationMS <= 0) return "";
+  const sec = durationMS / 1000;
+  if (sec < 10) return `${sec.toFixed(1)}s`;
+  return `${Math.round(sec)}s`;
+}
+
+function thinkingIndicator(m) {
+  if (!m.thinking) return "";
+  return `<div class="thinking-indicator" aria-live="polite">
+    <span class="thinking-dot"></span>
+    <span class="thinking-dot"></span>
+    <span class="thinking-dot"></span>
+    <span class="thinking-text">Thinking…</span>
+  </div>`;
 }
 
 // toolCallsBlock renders inline tool call indicators and collapsible results (MCP-08/09).
@@ -46,8 +63,10 @@ function toolCallsBlock(m) {
 // Returns empty string when meta is absent or the global toggle is OFF.
 function metaFooter(m) {
   if (!m.meta || !appState.settings.showMetaFooter) return "";
-  const { provider_name, model, tokens_used, tokens_remaining } = m.meta;
+  const { provider_name, model, tokens_used, tokens_remaining, duration_ms } = m.meta;
   let text = `${provider_name} · ${model} · ~${tokens_used} tokens`;
+  const durationText = formatDuration(duration_ms);
+  if (durationText) text += ` · ${durationText}`;
   if (tokens_remaining > 0) text += ` · ${tokens_remaining} remaining`;
   return `<footer class="msg-meta">${text}</footer>`;
 }
@@ -58,6 +77,7 @@ export function renderMessages() {
   els.messages.innerHTML = conv.messages.map((m, idx) => `
     <article class="bubble ${m.role}">
       <div class="markdown">${renderMarkdown(m.content)}</div>
+      ${m.role === "assistant" ? thinkingIndicator(m) : ""}
       ${m.role === "assistant" ? toolCallsBlock(m) : ""}
       ${m.role === "assistant" ? metaFooter(m) : ""}
       ${messageActions(idx)}
@@ -88,16 +108,26 @@ export function appendAssistantChunk(content) {
   if (!conv) return;
   const last = conv.messages[conv.messages.length - 1];
   if (!last || last.role !== "assistant") {
-    conv.messages.push({ role: "assistant", content: "" });
+    conv.messages.push({ role: "assistant", content: "", thinking: true, startedAt: Date.now() });
   }
-  conv.messages[conv.messages.length - 1].content += content;
+  const msg = conv.messages[conv.messages.length - 1];
+  msg.thinking = false;
+  msg.content += content;
   renderMessages();
 }
 
 export function stopStreaming(reason) {
+  appState.isStreaming = false;
   if (appState.streamingTimer) {
     clearInterval(appState.streamingTimer);
     appState.streamingTimer = null;
+  }
+  const conv = activeConversation();
+  if (conv && conv.messages.length > 0) {
+    const last = conv.messages[conv.messages.length - 1];
+    if (last.role === "assistant") {
+      last.thinking = false;
+    }
   }
   els.stop.style.display = "none";
   els.status.textContent = reason === "cancel" ? "stopped" : "ready";
@@ -133,14 +163,15 @@ function startFallbackStream() {
 export async function sendPrompt() {
   const conv = activeConversation();
   const text = els.prompt.value.trim();
-  if (!conv || !text || appState.streamingTimer) return;
+  if (!conv || !text || appState.isStreaming) return;
 
   const prov = getActiveProvider();
+  appState.isStreaming = true;
   appState.lastUserPrompt = text;
   conv.model        = els.chatModel.value;
   conv.providerName = prov ? prov.name : conv.providerName;
   conv.messages.push({ role: "user",      content: text });
-  conv.messages.push({ role: "assistant", content: "" });
+  conv.messages.push({ role: "assistant", content: "", thinking: true, startedAt: Date.now() });
   els.prompt.value = "";
   renderMessages();
 
@@ -175,7 +206,12 @@ export function attachResponseMeta(meta) {
   if (!conv || conv.messages.length === 0) return;
   const last = conv.messages[conv.messages.length - 1];
   if (last.role === "assistant") {
-    last.meta = meta;
+    const enrichedMeta = { ...meta };
+    if ((!enrichedMeta.duration_ms || enrichedMeta.duration_ms <= 0) && Number.isFinite(last.startedAt)) {
+      enrichedMeta.duration_ms = Math.max(1, Date.now() - last.startedAt);
+    }
+    last.meta = enrichedMeta;
+    last.thinking = false;
     renderMessages();
   }
 }

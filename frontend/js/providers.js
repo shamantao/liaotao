@@ -12,6 +12,16 @@ import { parseWailsError, applyFieldError, clearFieldError } from "./errors.js";
 
 // Module-level cache for PROV-08 preset profiles.
 let providerProfiles = [];
+const modelCache = new Map();
+
+// CORCT-02: provider-specific URL placeholders used in Settings form.
+const providerURLPlaceholders = {
+  "openai-compatible": "https://api.openai.com/v1",
+  ollama: "http://localhost:11434/v1",
+  gemini: "https://generativelanguage.googleapis.com/v1beta/openai",
+  anthropic: "https://api.anthropic.com/v1",
+  mistral: "https://api.mistral.ai/v1",
+};
 
 // ── Provider helpers ───────────────────────────────────────────────────────
 export function getActiveProvider() {
@@ -72,10 +82,12 @@ export function applyPreset(key) {
   const prof = providerProfiles.find((p) => p.key === key);
   if (!prof) {
     if (els.pfDocsLink) els.pfDocsLink.classList.add("hidden");
+    updateProviderURLPlaceholder();
     return;
   }
   els.pfUrl.value  = prof.base_url;
   els.pfType.value = prof.type;
+  updateProviderURLPlaceholder();
   if (!els.pfName.value.trim()) {
     els.pfName.value = prof.name;
   }
@@ -84,6 +96,83 @@ export function applyPreset(key) {
     els.pfDocsLink.textContent = `Get ${prof.name} API key ↗`;
     els.pfDocsLink.classList.remove("hidden");
   }
+}
+
+export function updateProviderURLPlaceholder() {
+  if (!els.pfUrl || !els.pfType) return;
+  const selectedType = els.pfType.value || "openai-compatible";
+  const placeholder = providerURLPlaceholders[selectedType] || providerURLPlaceholders["openai-compatible"];
+  els.pfUrl.placeholder = placeholder;
+}
+
+function setModelSelectorOptions(models, selectedModel = "") {
+  const safeModels = Array.isArray(models)
+    ? models.filter((item) => item && typeof item.id === "string" && item.id.trim() !== "")
+    : [];
+
+  if (safeModels.length === 0) {
+    els.chatModel.innerHTML = `<option value="">No models found</option>`;
+    els.chatModel.value = "";
+    return;
+  }
+
+  els.chatModel.innerHTML = safeModels
+    .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.id)}</option>`)
+    .join("");
+
+  if (selectedModel && safeModels.some((item) => item.id === selectedModel)) {
+    els.chatModel.value = selectedModel;
+    return;
+  }
+
+  const previous = els.chatModel.dataset.pendingValue || els.chatModel.value;
+  if (previous && safeModels.some((item) => item.id === previous)) {
+    els.chatModel.value = previous;
+    return;
+  }
+
+  els.chatModel.value = safeModels[0].id;
+}
+
+export function syncChatModelSelector(selectedModel = "") {
+  if (!els.chatModel) return;
+
+  if (appState.activeProviderId === 0) {
+    const label = selectedModel ? `Automat (${selectedModel})` : "— router selects —";
+    els.chatModel.innerHTML = `<option value="${escapeHtml(selectedModel)}">${escapeHtml(label)}</option>`;
+    els.chatModel.value = selectedModel;
+    return;
+  }
+
+  const prov = getActiveProvider();
+  if (!prov) {
+    els.chatModel.innerHTML = `<option value="">Select a provider first</option>`;
+    els.chatModel.value = "";
+    return;
+  }
+
+  const cached = modelCache.get(prov.id);
+  if (cached && cached.length > 0) {
+    setModelSelectorOptions(cached, selectedModel);
+    return;
+  }
+
+  if (selectedModel) {
+    els.chatModel.innerHTML = `<option value="${escapeHtml(selectedModel)}">${escapeHtml(selectedModel)} (saved)</option>`;
+    els.chatModel.value = selectedModel;
+    return;
+  }
+
+  els.chatModel.innerHTML = `<option value="">Open to load models…</option>`;
+  els.chatModel.value = "";
+}
+
+export function clearModelCache(providerID) {
+  if (typeof providerID === "number" && providerID > 0) {
+    modelCache.delete(providerID);
+    return;
+  }
+  modelCache.clear();
 }
 
 // ── PROV-05: Test connection ───────────────────────────────────────────────
@@ -174,6 +263,7 @@ export function openProviderForm(p) {
   els.pfActive.checked    = p.active;
   els.pfTemperature.value = String(p.temperature);
   els.pfNumCtx.value      = String(p.num_ctx);
+  updateProviderURLPlaceholder();
   if (els.pfPreset)   els.pfPreset.value = "";
   if (els.pfDocsLink) els.pfDocsLink.classList.add("hidden");
   if (els.pfTestResult) { els.pfTestResult.textContent = ""; els.pfTestResult.style.color = ""; }
@@ -203,6 +293,7 @@ export function showNewProviderForm() {
   els.pfActive.checked    = true;
   els.pfTemperature.value = "0.7";
   els.pfNumCtx.value      = "1024";
+  updateProviderURLPlaceholder();
   if (els.pfPreset)     els.pfPreset.value = "";
   if (els.pfDocsLink)   els.pfDocsLink.classList.add("hidden");
   if (els.pfTestResult) { els.pfTestResult.textContent = ""; els.pfTestResult.style.color = ""; }
@@ -251,6 +342,7 @@ export async function saveProvider(event) {
     }
 
     els.status.textContent = "saved";
+    clearModelCache(id || undefined);
     await loadProviders();
     const saved = appState.providers.find((p) => p.id === savedID);
     if (saved) openProviderForm(saved);
@@ -267,16 +359,20 @@ function inlineConfirm(btn, onConfirm) {
   if (btn.dataset.confirming === "1") {
     delete btn.dataset.confirming;
     clearTimeout(Number(btn.dataset.confirmTimer));
-    btn.textContent = btn.dataset.origLabel || "Delete";
+    btn.innerHTML = btn.dataset.origLabel || "🗑";
+    btn.title = btn.dataset.origTitle || "Delete provider";
     onConfirm();
     return;
   }
   btn.dataset.confirming = "1";
-  btn.dataset.origLabel = btn.textContent;
-  btn.textContent = "Confirmer ?";
+  btn.dataset.origLabel = btn.innerHTML;
+  btn.dataset.origTitle = btn.title || "Delete provider";
+  btn.innerHTML = "✓";
+  btn.title = "Confirm deletion";
   btn.dataset.confirmTimer = String(setTimeout(() => {
     delete btn.dataset.confirming;
-    btn.textContent = btn.dataset.origLabel || "Delete";
+    btn.innerHTML = btn.dataset.origLabel || "🗑";
+    btn.title = btn.dataset.origTitle || "Delete provider";
   }, 3000));
 }
 
@@ -292,6 +388,7 @@ export async function deleteCurrentProvider() {
     if (appState.activeProviderId === id) {
       appState.activeProviderId = null;
     }
+    clearModelCache(id);
     hideProviderForm();
     await loadProviders();
     els.status.textContent = "deleted";
@@ -299,31 +396,36 @@ export async function deleteCurrentProvider() {
 }
 
 // ── Model listing (PROV-04: uses provider_id, not api_key) ────────────────
-export async function loadModels() {
+export async function loadModels(options = {}) {
+  const { force = false, preferredModel = "" } = options;
   const prov = getActiveProvider();
   if (!prov) {
     if (appState.activeProviderId === 0) {
-      // Automat mode: the router picks the provider; we can't pre-fetch models.
-      els.chatModel.innerHTML = `<option value="">— router selects —</option>`;
-      els.status.textContent  = "automat active";
+      syncChatModelSelector(preferredModel);
+      els.status.textContent = "automat active";
     } else {
+      syncChatModelSelector(preferredModel);
       els.status.textContent = "select a provider";
     }
     return;
   }
+
+  if (!force && modelCache.has(prov.id)) {
+    setModelSelectorOptions(modelCache.get(prov.id), preferredModel);
+    els.status.textContent = "models cached";
+    return;
+  }
+
+  els.status.textContent = "loading models...";
   const result = await bridge.callService("ListModels", { provider_id: prov.id });
   if (!Array.isArray(result) || result.length === 0) {
+    modelCache.delete(prov.id);
+    syncChatModelSelector(preferredModel);
     els.status.textContent = "no models found";
     return;
   }
-  const previous = els.chatModel.value;
-  els.chatModel.innerHTML = result
-    .filter((item) => item && typeof item.id === "string" && item.id.trim() !== "")
-    .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.id)}</option>`)
-    .join("");
 
-  if (previous && Array.from(els.chatModel.options).some((opt) => opt.value === previous)) {
-    els.chatModel.value = previous;
-  }
+  modelCache.set(prov.id, result);
+  setModelSelectorOptions(result, preferredModel);
   els.status.textContent = "models loaded";
 }

@@ -67,8 +67,22 @@ body {
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.03em;
+}
+
+.brand-logo {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 14px rgba(62, 142, 126, 0.22));
+}
+
+.brand-name {
+  font-size: 1.02rem;
 }
 
 .tabs {
@@ -154,15 +168,29 @@ body {
   padding: 0;
 }
 
+.icon-only-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
 .sidebar button.new-chat {
-  width: 100%;
-  border: 0;
-  padding: 0.6rem;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(62, 142, 126, 0.3);
+  padding: 0;
   border-radius: 10px;
   font-weight: 600;
   color: #f6f2e6;
   background: linear-gradient(90deg, var(--primary), var(--accent));
   cursor: pointer;
+  box-shadow: 0 8px 22px rgba(11, 20, 30, 0.28);
+}
+
+.new-chat-icon {
+  font-size: 1rem;
+  line-height: 1;
 }
 
 /* ── Conversation list ─────────────────────────────────────────────── */
@@ -207,6 +235,32 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.9rem;
+  flex: 1;
+}
+
+.conversation-delete-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 7px;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.conversation-item:hover .conversation-delete-btn,
+.conversation-item.active .conversation-delete-btn {
+  opacity: 1;
+}
+
+.conversation-delete-btn:hover {
+  color: var(--danger);
+  border-color: var(--border);
 }
 
 .conversation-item.active {
@@ -227,8 +281,7 @@ body {
 
 /* ── Sidebar collapsed state ───────────────────────────────────────── */
 .app-shell.sidebar-collapsed .sidebar h3,
-.app-shell.sidebar-collapsed .conversation-item .label,
-.app-shell.sidebar-collapsed .new-chat .new-chat-label {
+.app-shell.sidebar-collapsed .conversation-item .label {
   display: none;
 }
 
@@ -237,7 +290,6 @@ body {
 }
 
 .app-shell.sidebar-collapsed .new-chat {
-  padding: 0.6rem 0;
   display: inline-flex;
   justify-content: center;
   align-items: center;

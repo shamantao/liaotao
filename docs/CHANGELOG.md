@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## [0.1.3] - 2026-04-10
+
+### Added
+- **CORCT-04**: Application branding updated with Liaotao logo in the top bar and frontend favicon (`frontend/assets/logo-liaotao.svg`).
+- Native icon assets prepared for packaging:
+	- `build/appicon.png` (shared source)
+	- `build/darwin/icons.icns` (macOS Dock/app bundle)
+	- `build/windows/icon.ico` (Windows executable/taskbar)
+	- `build/linux/appicon.png` (Linux launcher/package)
+
+### Changed
+- **CORCT-05**: Chat layout refactor — provider/model selectors moved below the prompt area with a compact refresh control.
+- **CORCT-06**: Main action buttons migrated from text labels to icon-only controls with tooltips/ARIA labels (chat composer, message actions, conversation delete, provider/MCP form actions).
+- **MOD-05**: Model listing is now lazy-loaded when needed and cached per provider for the current session; manual refresh forces reload.
+- **CONV-06**: Conversation deletion UX improved with inline confirmation and authoritative sidebar refresh from DB after deletion.
+- `.gitignore`: allow versioning native icon assets under `build/`.
+
 ## [0.1.2] - 2026-04-10
 
 ### Fixed (DEBT)

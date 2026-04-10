@@ -41,16 +41,20 @@ function inlineConfirm(btn, onConfirm) {
   if (btn.dataset.confirming === "1") {
     delete btn.dataset.confirming;
     clearTimeout(Number(btn.dataset.confirmTimer));
-    btn.textContent = btn.dataset.origLabel || "Delete";
+    btn.innerHTML = btn.dataset.origLabel || "🗑";
+    btn.title = btn.dataset.origTitle || "Delete MCP server";
     onConfirm();
     return;
   }
   btn.dataset.confirming = "1";
-  btn.dataset.origLabel = btn.textContent;
-  btn.textContent = "Confirmer ?";
+  btn.dataset.origLabel = btn.innerHTML;
+  btn.dataset.origTitle = btn.title || "Delete MCP server";
+  btn.innerHTML = "✓";
+  btn.title = "Confirm deletion";
   btn.dataset.confirmTimer = String(setTimeout(() => {
     delete btn.dataset.confirming;
-    btn.textContent = btn.dataset.origLabel || "Delete";
+    btn.innerHTML = btn.dataset.origLabel || "🗑";
+    btn.title = btn.dataset.origTitle || "Delete MCP server";
   }, 3000));
 }
 
@@ -225,9 +229,16 @@ async function copyMCPConfig() {
   try {
     await navigator.clipboard.writeText(text);
     if (e.copyBtn) {
-      const orig = e.copyBtn.textContent;
-      e.copyBtn.textContent = "Copied!";
-      setTimeout(() => { if (e.copyBtn) e.copyBtn.textContent = orig; }, 1500);
+      const orig = e.copyBtn.innerHTML;
+      const origTitle = e.copyBtn.title || "Copy config";
+      e.copyBtn.innerHTML = "✓";
+      e.copyBtn.title = "Copied";
+      setTimeout(() => {
+        if (e.copyBtn) {
+          e.copyBtn.innerHTML = orig;
+          e.copyBtn.title = origTitle;
+        }
+      }, 1500);
     }
   } catch {
     if (e.pingStatus) e.pingStatus.textContent = "Clipboard unavailable";

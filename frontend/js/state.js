@@ -9,6 +9,7 @@ export const appState = {
   conversations:       [],
   activeConversationId: null,
   streamingTimer:      null,
+  isStreaming:         false,
   lastUserPrompt:      "",
   sidebarCollapsed:    false,
   sidebarWidth:        290,
