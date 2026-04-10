@@ -71,6 +71,18 @@ function metaFooter(m) {
   return `<footer class="msg-meta">${text}</footer>`;
 }
 
+function tokenStatsFooter(m) {
+  if (!m.tokenStats) return "";
+  const parts = [];
+  if (m.tokenStats.tokens_in > 0) parts.push(`~${m.tokenStats.tokens_in} in`);
+  if (m.tokenStats.tokens_out > 0) parts.push(`~${m.tokenStats.tokens_out} out`);
+  if (m.tokenStats.duration_ms > 0) parts.push(formatDuration(m.tokenStats.duration_ms));
+  if (m.tokenStats.tokens_per_second > 0) parts.push(`${m.tokenStats.tokens_per_second.toFixed(1)} tok/s`);
+  if (parts.length === 0) return "";
+  const estimatedTag = m.tokenStats.estimated ? " <span class=\"msg-stats-estimated\">estimated</span>" : "";
+  return `<footer class="msg-stats">${parts.join(" · ")}${estimatedTag}</footer>`;
+}
+
 export function renderMessages() {
   const conv = activeConversation();
   if (!conv) { els.messages.innerHTML = ""; return; }
@@ -79,6 +91,7 @@ export function renderMessages() {
       <div class="markdown">${renderMarkdown(m.content)}</div>
       ${m.role === "assistant" ? thinkingIndicator(m) : ""}
       ${m.role === "assistant" ? toolCallsBlock(m) : ""}
+      ${tokenStatsFooter(m)}
       ${m.role === "assistant" ? metaFooter(m) : ""}
       ${messageActions(idx)}
     </article>
@@ -97,7 +110,7 @@ export async function loadConversationMessages(conversationId) {
   if (!conv) return;
   conv.messages = Array.isArray(result)
     ? result.filter((m) => m && typeof m.role === "string")
-             .map((m) => ({ role: m.role, content: m.content || "" }))
+             .map((m) => ({ role: m.role, content: m.content || "", tokenStats: m.token_stats || null }))
     : [];
   renderMessages();
 }
@@ -170,7 +183,14 @@ export async function sendPrompt() {
   appState.lastUserPrompt = text;
   conv.model        = els.chatModel.value;
   conv.providerName = prov ? prov.name : conv.providerName;
-  conv.messages.push({ role: "user",      content: text });
+  conv.messages.push({
+    role: "user",
+    content: text,
+    tokenStats: {
+      tokens_in: Math.max(1, Math.floor(text.trim().length / 4)),
+      estimated: true,
+    },
+  });
   conv.messages.push({ role: "assistant", content: "", thinking: true, startedAt: Date.now() });
   els.prompt.value = "";
   renderMessages();
@@ -211,6 +231,14 @@ export function attachResponseMeta(meta) {
       enrichedMeta.duration_ms = Math.max(1, Date.now() - last.startedAt);
     }
     last.meta = enrichedMeta;
+    last.tokenStats = {
+      tokens_out: enrichedMeta.tokens_out || Math.max(1, Math.floor((last.content || "").trim().length / 4)),
+      duration_ms: enrichedMeta.duration_ms || 0,
+      tokens_per_second: enrichedMeta.duration_ms > 0
+        ? ((enrichedMeta.tokens_out || Math.max(1, Math.floor((last.content || "").trim().length / 4))) / (enrichedMeta.duration_ms / 1000))
+        : 0,
+      estimated: true,
+    };
     last.thinking = false;
     renderMessages();
   }

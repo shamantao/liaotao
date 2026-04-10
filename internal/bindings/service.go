@@ -6,7 +6,9 @@ package bindings
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"strings"
 	"sync"
@@ -84,10 +86,19 @@ type ListMessagesPayload struct {
 }
 
 // MessageSummary is a persisted message row returned to frontend.
+type MessageTokenStats struct {
+	TokensIn        int     `json:"tokens_in,omitempty"`
+	TokensOut       int     `json:"tokens_out,omitempty"`
+	DurationMS      int64   `json:"duration_ms,omitempty"`
+	TokensPerSecond float64 `json:"tokens_per_second,omitempty"`
+	Estimated       bool    `json:"estimated,omitempty"`
+}
+
 type MessageSummary struct {
 	ID        int64  `json:"id"`
 	Role      string `json:"role"`
 	Content   string `json:"content"`
+	TokenStats MessageTokenStats `json:"token_stats"`
 	CreatedAt string `json:"created_at"`
 }
 
@@ -260,7 +271,7 @@ func (s *Service) ListMessages(ctx context.Context, payload ListMessagesPayload)
 
 	rows, err := s.db.QueryContext(
 		ctx,
-		`SELECT id, role, content, created_at
+		`SELECT id, role, content, token_stats, created_at
 		 FROM messages
 		 WHERE conversation_id = ?
 		 ORDER BY id ASC
@@ -276,8 +287,12 @@ func (s *Service) ListMessages(ctx context.Context, payload ListMessagesPayload)
 	items := make([]MessageSummary, 0, limit)
 	for rows.Next() {
 		var item MessageSummary
-		if err := rows.Scan(&item.ID, &item.Role, &item.Content, &item.CreatedAt); err != nil {
+		var rawTokenStats string
+		if err := rows.Scan(&item.ID, &item.Role, &item.Content, &rawTokenStats, &item.CreatedAt); err != nil {
 			return nil, err
+		}
+		if rawTokenStats != "" {
+			_ = json.Unmarshal([]byte(rawTokenStats), &item.TokenStats)
 		}
 		items = append(items, item)
 	}
@@ -293,6 +308,23 @@ type MessagePayload struct {
 	ConversationID int64  `json:"conversation_id"`
 	Role           string `json:"role"`
 	Content        string `json:"content"`
+	TokenStats     *MessageTokenStats `json:"token_stats,omitempty"`
+}
+
+func estimateTokenCount(text string) int {
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
+		return 0
+	}
+	estimate := len(trimmed) / 4
+	if estimate < 1 {
+		return 1
+	}
+	return estimate
+}
+
+func roundToOneDecimal(value float64) float64 {
+	return math.Round(value*10) / 10
 }
 
 // SaveMessage persists one message and refreshes parent updated_at.
@@ -310,12 +342,29 @@ func (s *Service) SaveMessage(ctx context.Context, payload MessagePayload) error
 	}
 	defer tx.Rollback()
 
+	stats := payload.TokenStats
+	if stats == nil && payload.Role == "user" {
+		stats = &MessageTokenStats{
+			TokensIn:  estimateTokenCount(payload.Content),
+			Estimated: true,
+		}
+	}
+	rawTokenStats := "{}"
+	if stats != nil {
+		encoded, err := json.Marshal(stats)
+		if err != nil {
+			return err
+		}
+		rawTokenStats = string(encoded)
+	}
+
 	if _, err := tx.ExecContext(
 		ctx,
-		`INSERT INTO messages (conversation_id, role, content) VALUES (?, ?, ?)`,
+		`INSERT INTO messages (conversation_id, role, content, token_stats) VALUES (?, ?, ?, ?)`,
 		payload.ConversationID,
 		payload.Role,
 		payload.Content,
+		rawTokenStats,
 	); err != nil {
 		return err
 	}

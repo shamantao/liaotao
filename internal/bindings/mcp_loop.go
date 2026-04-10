@@ -230,7 +230,7 @@ func (s *Service) parseToolCallStream(
 	if emitChunks && textBuilder.Len() > 0 {
 		s.emit("chat:chunk", map[string]any{"conversation_id": convID, "content": "", "done": true})
 		s.emit("chat:done", map[string]any{"conversation_id": convID, "done": true})
-		s.persistAssistantMessage(ctx, convID, textBuilder.String())
+		s.persistAssistantMessage(ctx, convID, textBuilder.String(), nil)
 	}
 
 	// Build complete ToolCall list from accumulated partials.

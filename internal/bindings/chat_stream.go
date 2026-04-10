@@ -15,9 +15,11 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func (s *Service) streamOpenAI(ctx context.Context, convID string, cfg openAIConfig, payload SendMessagePayload, model, prompt string) error {
+	startedAt := time.Now()
 	reqPayload := openAIChatRequest{
 		Model: model,
 		Messages: []openAIChatMessage{
@@ -81,13 +83,21 @@ func (s *Service) streamOpenAI(ctx context.Context, convID string, cfg openAICon
 
 		raw := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
 		if raw == "[DONE]" {
+			tokensOut := estimateTokenCount(assistantBuilder.String())
+			durationMS := time.Since(startedAt).Milliseconds()
+			stats := &MessageTokenStats{
+				TokensOut:       tokensOut,
+				DurationMS:      durationMS,
+				TokensPerSecond: roundToOneDecimal(float64(tokensOut) / maxDurationSeconds(durationMS)),
+				Estimated:       true,
+			}
 			s.emit("chat:chunk", map[string]any{
 				"conversation_id": convID,
 				"content":         "",
 				"done":            true,
 			})
 			s.emit("chat:done", map[string]any{"conversation_id": convID, "done": true})
-			s.persistAssistantMessage(ctx, convID, assistantBuilder.String())
+			s.persistAssistantMessage(ctx, convID, assistantBuilder.String(), stats)
 			return nil
 		}
 
@@ -118,12 +128,20 @@ func (s *Service) streamOpenAI(ctx context.Context, convID string, cfg openAICon
 
 	s.emit("chat:chunk", map[string]any{"conversation_id": convID, "content": "", "done": true})
 	s.emit("chat:done", map[string]any{"conversation_id": convID, "done": true})
-	s.persistAssistantMessage(ctx, convID, assistantBuilder.String())
+	tokensOut := estimateTokenCount(assistantBuilder.String())
+	durationMS := time.Since(startedAt).Milliseconds()
+	s.persistAssistantMessage(ctx, convID, assistantBuilder.String(), &MessageTokenStats{
+		TokensOut:       tokensOut,
+		DurationMS:      durationMS,
+		TokensPerSecond: roundToOneDecimal(float64(tokensOut) / maxDurationSeconds(durationMS)),
+		Estimated:       true,
+	})
 
 	return nil
 }
 
 func (s *Service) streamOllama(ctx context.Context, convID string, cfg openAIConfig, payload SendMessagePayload, model, prompt string) error {
+	startedAt := time.Now()
 	ollamaBase := strings.TrimSuffix(cfg.BaseURL, "/v1")
 
 	reqPayload := map[string]any{
@@ -199,9 +217,16 @@ func (s *Service) streamOllama(ctx context.Context, convID string, cfg openAICon
 		}
 
 		if chunk.Done {
+			tokensOut := estimateTokenCount(assistantBuilder.String())
+			durationMS := time.Since(startedAt).Milliseconds()
 			s.emit("chat:chunk", map[string]any{"conversation_id": convID, "content": "", "done": true})
 			s.emit("chat:done", map[string]any{"conversation_id": convID, "done": true})
-			s.persistAssistantMessage(ctx, convID, assistantBuilder.String())
+			s.persistAssistantMessage(ctx, convID, assistantBuilder.String(), &MessageTokenStats{
+				TokensOut:       tokensOut,
+				DurationMS:      durationMS,
+				TokensPerSecond: roundToOneDecimal(float64(tokensOut) / maxDurationSeconds(durationMS)),
+				Estimated:       true,
+			})
 			return nil
 		}
 	}
@@ -212,7 +237,21 @@ func (s *Service) streamOllama(ctx context.Context, convID string, cfg openAICon
 
 	s.emit("chat:chunk", map[string]any{"conversation_id": convID, "content": "", "done": true})
 	s.emit("chat:done", map[string]any{"conversation_id": convID, "done": true})
-	s.persistAssistantMessage(ctx, convID, assistantBuilder.String())
+	tokensOut := estimateTokenCount(assistantBuilder.String())
+	durationMS := time.Since(startedAt).Milliseconds()
+	s.persistAssistantMessage(ctx, convID, assistantBuilder.String(), &MessageTokenStats{
+		TokensOut:       tokensOut,
+		DurationMS:      durationMS,
+		TokensPerSecond: roundToOneDecimal(float64(tokensOut) / maxDurationSeconds(durationMS)),
+		Estimated:       true,
+	})
 
 	return nil
+}
+
+func maxDurationSeconds(durationMS int64) float64 {
+	if durationMS <= 0 {
+		return 0.001
+	}
+	return float64(durationMS) / 1000
 }

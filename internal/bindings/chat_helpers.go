@@ -74,7 +74,7 @@ func (s *Service) cancelStream(convID string) bool {
 
 // persistAssistantMessage saves a completed assistant reply to the conversation DB.
 // Non-numeric or zero conversation IDs (e.g. "default") are silently skipped.
-func (s *Service) persistAssistantMessage(ctx context.Context, convID, content string) {
+func (s *Service) persistAssistantMessage(ctx context.Context, convID, content string, stats *MessageTokenStats) {
 	if content == "" {
 		return
 	}
@@ -82,9 +82,16 @@ func (s *Service) persistAssistantMessage(ctx context.Context, convID, content s
 	if err != nil || id <= 0 {
 		return
 	}
+	if stats == nil {
+		stats = &MessageTokenStats{
+			TokensOut: estimateTokenCount(content),
+			Estimated: true,
+		}
+	}
 	_ = s.SaveMessage(ctx, MessagePayload{
 		ConversationID: id,
 		Role:           "assistant",
 		Content:        content,
+		TokenStats:     stats,
 	})
 }

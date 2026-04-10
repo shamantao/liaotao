@@ -108,6 +108,19 @@
   opacity: 0.65;
 }
 
+.msg-stats {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  text-align: right;
+  margin-top: 0.4rem;
+  opacity: 0.78;
+}
+
+.msg-stats-estimated {
+  opacity: 0.7;
+  font-style: italic;
+}
+
 /* ── Assistant thinking loader (CORCT-03) ─────────────────────────── */
 .thinking-indicator {
   display: inline-flex;

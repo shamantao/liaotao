@@ -5,12 +5,14 @@
 ### Added
 - **CONV-03**: Conversation sidebar now groups items by recency (`Today`, `Yesterday`, `This Week`, `Older`) and shows a compact date/time line below each title.
 - **CONV-07**: Conversation search added in the sidebar with backend search across both conversation titles and message content.
+- **CONV-08**: Each message now exposes token stats in the chat history footer, including input/output token counts, generation duration, and throughput when available.
 
 ### Changed
 - **CONV-05**: Conversations can now be renamed inline from the sidebar.
 - New conversations automatically adopt a preview title from the first user message while preserving later manual renames.
 - Conversation sidebar interactions now keep the active conversation synchronized after search and rename flows.
 - Added regression/unit coverage for conversation rename, search, and auto-title behaviors.
+- Message persistence now stores per-message token telemetry in the existing `messages.token_stats` JSON column, with estimated values used when providers do not return full metrics.
 
 ## [0.1.5] - 2026-04-10
 

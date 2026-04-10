@@ -31,6 +31,8 @@ type streamMeta struct {
 	ProviderName    string // user-given name of the provider that answered
 	Model           string // model name resolved at routing time
 	TokensUsed      int    // estimated input tokens (len(prompt)/4)
+	TokensOut       int    // estimated output tokens
+	DurationMS      int64  // wall-clock duration for the assistant reply
 	TokensRemaining int    // 0 = no quota configured; >0 = tokens left before quota switch
 }
 
@@ -144,6 +146,8 @@ func (s *Service) SendMessage(_ context.Context, payload SendMessagePayload) (Se
 				"provider_name":    meta.ProviderName,
 				"model":            meta.Model,
 				"tokens_used":      meta.TokensUsed,
+				"tokens_out":       meta.TokensOut,
+				"duration_ms":      meta.DurationMS,
 				"tokens_remaining": meta.TokensRemaining,
 			})
 		}
@@ -176,6 +180,7 @@ func (s *Service) CancelGeneration(_ context.Context, payload CancelPayload) (ma
 func (s *Service) streamWithCandidates(ctx context.Context, convID string, candidates []routerCandidate, payload SendMessagePayload, model, prompt string) (streamMeta, error) {
 	var lastErr error
 	for _, c := range candidates {
+		startedAt := time.Now()
 		// Resolve model per-candidate in Automat mode (model == "").
 		resolvedModel := model
 		if resolvedModel == "" {
@@ -188,16 +193,16 @@ func (s *Service) streamWithCandidates(ctx context.Context, convID string, candi
 		err = s.streamOpenAIWithToolsRetry(ctx, convID, c.Cfg, payload, resolvedModel, prompt)
 		if err == nil {
 			// Estimate input tokens (1 token ≈ 4 chars) and record usage (ROUTER-03).
-			tokenEstimate := len(prompt) / 4
-			if tokenEstimate < 1 {
-				tokenEstimate = 1
-			}
+			tokenEstimate := estimateTokenCount(prompt)
 			_ = s.incrementTokenUsage(context.Background(), c.ProviderID, tokenEstimate)
 			remaining := s.getTokensRemaining(context.Background(), c.ProviderID, c.DailyLimit, c.MonthlyLimit)
+			durationMS := time.Since(startedAt).Milliseconds()
 			return streamMeta{
 				ProviderName:    c.Name,
 				Model:           resolvedModel,
 				TokensUsed:      tokenEstimate,
+				TokensOut:       0,
+				DurationMS:      durationMS,
 				TokensRemaining: remaining,
 			}, nil
 		}

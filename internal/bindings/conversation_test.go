@@ -199,6 +199,60 @@ func TestConversation_AutoTitleFromFirstUserMessage(t *testing.T) {
 	}
 }
 
+// TestConversation_MessageTokenStats verifies that token stats are persisted
+// in the existing messages.token_stats JSON column and returned to the frontend.
+func TestConversation_MessageTokenStats(t *testing.T) {
+	ctx := context.Background()
+	database := newConversationTestDB(t)
+	svc := NewService(database)
+
+	conv, err := svc.CreateConversation(ctx, CreateConversationPayload{
+		Title:      "Stats test",
+		ProviderID: 0,
+		Model:      "gpt-4o-mini",
+	})
+	if err != nil {
+		t.Fatalf("CreateConversation: %v", err)
+	}
+
+	if err := svc.SaveMessage(ctx, MessagePayload{
+		ConversationID: conv.ID,
+		Role:           "user",
+		Content:        "Short prompt",
+	}); err != nil {
+		t.Fatalf("SaveMessage user: %v", err)
+	}
+
+	assistantStats := &MessageTokenStats{
+		TokensOut:       42,
+		DurationMS:      2100,
+		TokensPerSecond: 20.0,
+		Estimated:       true,
+	}
+	if err := svc.SaveMessage(ctx, MessagePayload{
+		ConversationID: conv.ID,
+		Role:           "assistant",
+		Content:        "Assistant answer",
+		TokenStats:     assistantStats,
+	}); err != nil {
+		t.Fatalf("SaveMessage assistant: %v", err)
+	}
+
+	items, err := svc.ListMessages(ctx, ListMessagesPayload{ConversationID: conv.ID, Limit: 10})
+	if err != nil {
+		t.Fatalf("ListMessages: %v", err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("expected 2 messages, got %d", len(items))
+	}
+	if items[0].TokenStats.TokensIn < 1 || !items[0].TokenStats.Estimated {
+		t.Fatalf("user token stats not auto-populated: %+v", items[0].TokenStats)
+	}
+	if items[1].TokenStats.TokensOut != 42 || items[1].TokenStats.DurationMS != 2100 {
+		t.Fatalf("assistant token stats mismatch: %+v", items[1].TokenStats)
+	}
+}
+
 // TestConversation_ProviderIDStoredAsInteger verifies that CreateConversation
 // stores a numeric provider_id FK and that ListConversations returns the
 // resolved provider name — not a raw string.
