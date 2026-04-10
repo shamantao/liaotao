@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## [0.1.3] - 2026-04-10
+## [0.1.5] - 2026-04-10
 
 ### Added
 - **CORCT-04**: Application branding updated with Liaotao logo in the top bar and frontend favicon (`frontend/assets/logo-liaotao.svg`).
