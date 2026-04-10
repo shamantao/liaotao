@@ -216,7 +216,7 @@ export async function sendPrompt() {
     stream:          true,
     temperature:     Number(conv.temperature) > 0 ? Number(conv.temperature) : (prov ? prov.temperature : 0.7),
     max_tokens:      Math.max(0, Number(conv.maxTokens) || 0),
-    system_prompt:   String(conv.systemPrompt || ""),
+    system_prompt:   String(conv.systemPrompt || appState.settings.defaultSystemPrompt || ""),
     num_ctx:         prov ? prov.num_ctx     : 1024,
   });
 

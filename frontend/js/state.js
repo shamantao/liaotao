@@ -21,7 +21,7 @@ export const appState = {
   lastUsedModels:      [],     // [{ providerId, providerName, model, usedAt }]
   modelFilterQuery:    "",
   settingsSection:     "general",
-  settings: { language: "fr", theme: "dark", showMetaFooter: true },
+  settings: { language: "fr", theme: "dark", showMetaFooter: true, defaultSystemPrompt: "" },
 };
 
 // ── DOM refs ───────────────────────────────────────────────────────────────
@@ -54,6 +54,10 @@ export const els = {
   // settings – general
   language: document.getElementById("language"),
   theme:    document.getElementById("theme"),
+  defaultSystemPrompt: document.getElementById("default-system-prompt"),
+  exportConfigBtn: document.getElementById("export-config-btn"),
+  importConfigInput: document.getElementById("import-config-input"),
+  aboutContent: document.getElementById("about-content"),
   // settings – providers CRUD
   providersList:           document.getElementById("providers-list"),
   newProviderBtn:          document.getElementById("new-provider-btn"),
@@ -112,4 +116,5 @@ export function applySettingsToUI() {
   if (els.language) els.language.value = appState.settings.language || "fr";
   if (els.theme)    els.theme.value    = appState.settings.theme    || "dark";
   if (els.showMetaFooter) els.showMetaFooter.checked = appState.settings.showMetaFooter !== false;
+  if (els.defaultSystemPrompt) els.defaultSystemPrompt.value = appState.settings.defaultSystemPrompt || "";
 }

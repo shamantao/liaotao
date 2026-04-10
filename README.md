@@ -1,11 +1,15 @@
-# Adapter: wails-go
+# liaotao
 
-## What this adapter provides
-- `internal/config/config.go` — layered TOML config with validation
-- `internal/paths/paths.go` — safe path manager with allowed_roots guard
-- `internal/logger/logger.go` — structured logging (JSON file + console)
-- `main.go` — Wails v3 entry point wiring the above
-- `frontend/` — minimal HTML/CSS/JS frontend (no framework)
+Lightweight local-first desktop AI chat app built with Go + Wails v3 and a vanilla HTML/CSS/JS frontend.
+
+## Core features
+- Multi-provider chat: OpenAI-compatible APIs, Ollama, and MCP tool servers.
+- Smart routing with provider priority + quota-aware fallback.
+- Conversation history with search, rename, delete, and per-message token stats.
+- Per-conversation generation settings: model, temperature, max tokens, system prompt.
+- Settings tab with General, Providers, MCP Servers, and About sections.
+- Configuration import/export in TOML format.
+- Provider API keys encrypted at rest in SQLite (application-level AES-GCM).
 
 ## Requirements
 - Go >= 1.22 (`brew install go` or https://go.dev/dl/)
@@ -13,23 +17,25 @@
 - Node.js >= 20 (for frontend assets, optional if no npm deps)
 - Platform prerequisites: https://wails.io/docs/gettingstarted/installation
 
-## Getting started
+## Development
 ```bash
 wails3 dev
 ```
 
-## Running tests
+## Tests
 ```bash
-go test ./...
+go test ./internal/... -v -timeout 60s
 ```
 
-## Config layers
+## Configuration layers
 1. `config/default.toml` (bundled with the app)
-2. `~/.config/<app>/user.toml` (optional user overrides)
+2. `~/.config/liaotao/user.toml` (optional user overrides)
 3. `config/project.toml` (optional local project overrides, not committed)
-4. Environment variables with prefix `APP__` (for example `APP__APP__MODE=normal`)
+4. Environment variables with prefix `APP__` (example: `APP__APP__MODE=normal`)
 
-## Notes
-- Always start in `mode = "debug"` until workflow is validated.
-- Logs are written to `logs/app.log` in JSON format with rotation.
-- All write operations are restricted to `path_manager.allowed_roots`.
+## Security notes
+- SQLite database file is restricted to owner permissions (`0600`) when possible.
+- Provider API keys are stored encrypted at rest.
+- A local master key is used for encryption and can be overridden via:
+	- `LIAOTAO_MASTER_KEY`
+	- `LIAOTAO_MASTER_KEY_FILE`

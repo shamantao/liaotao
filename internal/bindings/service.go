@@ -125,15 +125,17 @@ func (s *Service) CreateConversation(ctx context.Context, payload CreateConversa
 	if model == "" {
 		model = "gpt-4o-mini"
 	}
+	defaultSystemPrompt := s.getSettingValue(ctx, "default_system_prompt", "")
 
 	// NULLIF(provider_id, 0) stores NULL when no provider is selected.
 	res, err := s.db.ExecContext(
 		ctx,
 		`INSERT INTO conversations (title, provider_id, model, temperature, max_tokens, system_prompt)
-		 VALUES (?, NULLIF(?, 0), ?, 0.7, 0, '')`,
+		 VALUES (?, NULLIF(?, 0), ?, 0.7, 0, ?)`,
 		title,
 		payload.ProviderID,
 		model,
+		defaultSystemPrompt,
 	)
 	if err != nil {
 		return ConversationSummary{}, err

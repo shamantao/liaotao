@@ -207,6 +207,25 @@
     display: flex;
   }
 
+  #section-about {
+    max-width: 680px;
+  }
+
+  .about-content h4 {
+    margin: 1rem 0 0.4rem;
+    font-size: 0.9rem;
+    color: var(--text-dim);
+  }
+
+  .about-content ul {
+    margin: 0.25rem 0 0.8rem;
+    padding-left: 1.1rem;
+  }
+
+  .about-content a {
+    color: var(--accent);
+  }
+
   /* ── Providers two-column layout ───────────────────────────────────── */
   .providers-layout {
     display: flex;

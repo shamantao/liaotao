@@ -134,7 +134,10 @@ func (s *Service) CreateProvider(ctx context.Context, payload CreateProviderPayl
 	}
 
 	url := strings.TrimSpace(payload.URL)
-	apiKey := strings.TrimSpace(payload.APIKey)
+	apiKey, err := encryptAPIKeyValue(payload.APIKey)
+	if err != nil {
+		return ProviderRecord{}, fmt.Errorf("encrypt api key: %w", err)
+	}
 	description := strings.TrimSpace(payload.Description)
 
 	res, err := s.db.ExecContext(ctx,
@@ -200,13 +203,17 @@ func (s *Service) UpdateProvider(ctx context.Context, payload UpdateProviderPayl
 			useInRAG, active, temp, numCtx, payload.ID,
 		)
 	} else {
+		encryptedAPIKey, encErr := encryptAPIKeyValue(apiKey)
+		if encErr != nil {
+			return ProviderRecord{}, fmt.Errorf("encrypt api key: %w", encErr)
+		}
 		_, err = s.db.ExecContext(ctx,
 			`UPDATE providers
 			 SET name=?, type=?, url=?, api_key=?, description=?,
 			     use_in_rag=?, active=?, temperature=?, num_ctx=?,
 			     updated_at=datetime('now')
 			 WHERE id=?`,
-			name, pType, url, apiKey, description,
+			name, pType, url, encryptedAPIKey, description,
 			useInRAG, active, temp, numCtx, payload.ID,
 		)
 	}
@@ -264,7 +271,17 @@ func (s *Service) getProviderCredentials(ctx context.Context, id int64) (openAIC
 		cfg.BaseURL = strings.TrimRight(url, "/")
 	}
 	if key := strings.TrimSpace(p.APIKey); key != "" {
-		cfg.APIKey = key
+		plain, encrypted, decErr := decryptAPIKeyValue(key)
+		if decErr == nil {
+			cfg.APIKey = plain
+			if !encrypted && plain != "" {
+				if reEncrypted, encErr := encryptAPIKeyValue(plain); encErr == nil {
+					_, _ = s.db.ExecContext(ctx, `UPDATE providers SET api_key=?, updated_at=datetime('now') WHERE id=?`, reEncrypted, id)
+				}
+			}
+		} else {
+			cfg.APIKey = key
+		}
 	}
 	cfg.Type = p.Type
 	return cfg, nil

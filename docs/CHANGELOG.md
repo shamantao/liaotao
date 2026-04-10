@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## [0.1.7] - 2026-04-10
+
+### Added
+- **SET-05**: Settings can now be exported and imported as TOML (general, providers, MCP servers).
+- **SET-06**: New About section in Settings with runtime version, links and credits.
+
+### Changed
+- **SET-02**: General settings now persist language/theme and a default system prompt used for new conversations.
+- **SET-07**: Provider API keys are now encrypted at rest in SQLite with transparent runtime decryption.
+
 ## [0.1.6] - 2026-04-10
 
 ### Added

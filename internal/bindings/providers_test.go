@@ -9,7 +9,9 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -275,5 +277,47 @@ func TestUpdateProviderPreservesKeyWhenEmpty(t *testing.T) {
 	}
 	if cfg.APIKey != "original-key" {
 		t.Errorf("expected key to be preserved as %q, got %q", "original-key", cfg.APIKey)
+	}
+}
+
+// TestProviderAPIKeyStoredEncrypted verifies SET-07 behavior:
+// provider API keys are encrypted before being persisted in SQLite.
+func TestProviderAPIKeyStoredEncrypted(t *testing.T) {
+	_ = os.Setenv("LIAOTAO_MASTER_KEY", "test-master-key")
+	t.Cleanup(func() {
+		_ = os.Unsetenv("LIAOTAO_MASTER_KEY")
+	})
+
+	svc := newProvidersTestService(t)
+	ctx := context.Background()
+
+	created, err := svc.CreateProvider(ctx, CreateProviderPayload{
+		Name:   "Encrypted Provider",
+		Type:   "openai-compatible",
+		APIKey: "sk-plaintext-secret",
+		Active: true,
+	})
+	if err != nil {
+		t.Fatalf("CreateProvider: %v", err)
+	}
+
+	var raw string
+	err = svc.db.QueryRowContext(ctx, `SELECT api_key FROM providers WHERE id=?`, created.ID).Scan(&raw)
+	if err != nil {
+		t.Fatalf("query api_key: %v", err)
+	}
+	if raw == "sk-plaintext-secret" {
+		t.Fatalf("api key must not be stored in clear text")
+	}
+	if !strings.HasPrefix(raw, encryptedAPIKeyPrefix) {
+		t.Fatalf("api key must be encrypted, got %q", raw)
+	}
+
+	cfg, err := svc.getProviderCredentials(ctx, created.ID)
+	if err != nil {
+		t.Fatalf("getProviderCredentials: %v", err)
+	}
+	if cfg.APIKey != "sk-plaintext-secret" {
+		t.Fatalf("decrypted key mismatch: got %q", cfg.APIKey)
 	}
 }

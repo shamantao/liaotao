@@ -169,6 +169,11 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_quota_usage_lookup
 		 ON provider_quota_usage(provider_id, period_type, period);`,
+		`CREATE TABLE IF NOT EXISTS app_settings (
+			key TEXT PRIMARY KEY,
+			value TEXT NOT NULL,
+			updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+		);`,
 		// v1.4 MCP server registry.
 		`CREATE TABLE IF NOT EXISTS mcp_servers (
 			id        INTEGER PRIMARY KEY AUTOINCREMENT,

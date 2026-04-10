@@ -22,6 +22,7 @@ import {
 } from "./chat.js";
 import { newConversation, loadPersistedConversations, saveActiveConversationSettings, searchConversations } from "./conversations.js";
 import { loadMCPServers, initMCPFormListeners } from "./mcp.js";
+import { loadGeneralSettings, saveGeneralSettings, exportSettingsTOML, importSettingsTOML, loadAboutInfo } from "./settings.js";
 
 // ── Settings navigation ────────────────────────────────────────────────────
 function switchSettingsSection(sectionId) {
@@ -35,6 +36,9 @@ function switchSettingsSection(sectionId) {
   }
   if (sectionId === "mcp") {
     loadMCPServers();
+  }
+  if (sectionId === "about") {
+    loadAboutInfo();
   }
 }
 
@@ -194,12 +198,40 @@ function bindEvents() {
     els.language.addEventListener("change", () => {
       appState.settings.language = els.language.value;
       persistSettingsToStorage();
+      saveGeneralSettings();
     });
   }
   if (els.theme) {
     els.theme.addEventListener("change", () => {
       appState.settings.theme = els.theme.value;
       persistSettingsToStorage();
+      saveGeneralSettings();
+    });
+  }
+  if (els.defaultSystemPrompt) {
+    let generalPromptDebounce = null;
+    els.defaultSystemPrompt.addEventListener("input", () => {
+      appState.settings.defaultSystemPrompt = els.defaultSystemPrompt.value || "";
+      if (generalPromptDebounce) clearTimeout(generalPromptDebounce);
+      generalPromptDebounce = setTimeout(() => {
+        saveGeneralSettings();
+      }, 240);
+    });
+  }
+  if (els.exportConfigBtn) {
+    els.exportConfigBtn.addEventListener("click", () => {
+      exportSettingsTOML();
+    });
+  }
+  if (els.importConfigInput) {
+    els.importConfigInput.addEventListener("change", async () => {
+      const file = els.importConfigInput.files && els.importConfigInput.files[0];
+      if (!file) return;
+      await importSettingsTOML(file);
+      els.importConfigInput.value = "";
+      await loadProviders();
+      await loadPersistedConversations();
+      await loadAboutInfo();
     });
   }
 
@@ -259,12 +291,14 @@ async function init() {
   applySidebarState();
   loadSettingsFromStorage();
   applySettingsToUI();
+  await loadGeneralSettings();
   bindEvents();
   initMCPFormListeners();
   await loadProviders();
   await loadProviderProfiles();
   await loadPersistedConversations();
   renderLastUsedModels();
+  await loadAboutInfo();
 }
 
 init();

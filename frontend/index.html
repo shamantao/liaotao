@@ -89,6 +89,7 @@
           <button class="settings-nav-btn active" data-section="general">General</button>
           <button class="settings-nav-btn" data-section="providers">Providers</button>
           <button class="settings-nav-btn" data-section="mcp">MCP Servers</button>
+          <button class="settings-nav-btn" data-section="about">About</button>
         </nav>
         <div class="settings-content">
 
@@ -113,6 +114,18 @@
               <label class="checkbox-row" for="show-meta-footer">
                 <input type="checkbox" id="show-meta-footer"> Show model &amp; token info after each response
               </label>
+            </div>
+            <div class="field-group">
+              <label for="default-system-prompt">Default system prompt</label>
+              <textarea id="default-system-prompt" rows="3" placeholder="Used for new conversations"></textarea>
+            </div>
+            <div class="field-group">
+              <label>Configuration</label>
+              <div class="test-connection-row">
+                <button type="button" class="action-btn" id="export-config-btn">Export TOML</button>
+                <label class="action-btn" for="import-config-input">Import TOML</label>
+                <input id="import-config-input" type="file" accept=".toml,text/plain" class="hidden">
+              </div>
             </div>
           </div>
 
@@ -254,6 +267,11 @@
                 </form>
               </div>
             </div>
+          </div>
+
+          <div class="settings-section" id="section-about">
+            <h3>About</h3>
+            <div id="about-content" class="about-content"></div>
           </div>
       </div>
     </section>
