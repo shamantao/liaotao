@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## [0.2.1] - 2026-04-11
+
+### Added
+- **KEY-01**: Global shortcut `Ctrl/Cmd+K` to create a new conversation.
+- **KEY-02**: Global shortcut `Ctrl/Cmd+/` to focus the chat input.
+- **KEY-03**: Global shortcut `Ctrl/Cmd+B` to toggle the sidebar.
+- **KEY-04**: `Escape` now stops generation when streaming, otherwise returns from Settings to Chat.
+- **KEY-05**: Keyboard shortcuts cheat sheet added to Settings > About.
+
+### Changed
+- About shortcuts display now adapts modifier labels by platform (`⌘` on macOS, `Ctrl` on other platforms).
+- Localized labels added for keyboard shortcuts (EN/FR/zh-TW).
+
 ## [0.2.0] - 2026-04-11
 
 ### Added

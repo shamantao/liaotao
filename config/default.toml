@@ -9,7 +9,7 @@
 # ---------------------------------------------------------------------------
 [app]
 name       = "liaotao"
-version    = "0.1.9"
+version    = "0.2.1"
 mode       = "debug"   # debug | normal
 language   = "fr"
 
