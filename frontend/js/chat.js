@@ -155,6 +155,16 @@ export async function cancelGeneration() {
   bridge.eventsEmit("chat:stop", { conversation_id: String(appState.activeConversationId || "") });
 }
 
+function resolveTemperatureForSend(conv, prov) {
+  if (appState.settings.expertMode) {
+    return Number(conv.temperature) > 0 ? Number(conv.temperature) : (prov ? prov.temperature : 0.7);
+  }
+  const style = String(appState.settings.responseStyle || "balanced").toLowerCase();
+  if (style === "precise") return 0.2;
+  if (style === "creative") return 1.0;
+  return 0.7;
+}
+
 function startFallbackStream() {
   const generated = [
     `### ${els.chatModel.value}`,
@@ -215,7 +225,7 @@ export async function sendPrompt() {
     model:           conv.model,
     prompt:          text,
     stream:          true,
-    temperature:     Number(conv.temperature) > 0 ? Number(conv.temperature) : (prov ? prov.temperature : 0.7),
+    temperature:     resolveTemperatureForSend(conv, prov),
     max_tokens:      Math.max(0, Number(conv.maxTokens) || 0),
     system_prompt:   String(conv.systemPrompt || appState.settings.defaultSystemPrompt || ""),
     num_ctx:         prov ? prov.num_ctx     : 1024,

@@ -61,23 +61,29 @@
                 <!-- Populated dynamically from providers DB -->
               </select>
               <label for="chat-model" data-i18n="chat.model">Model</label>
-              <input id="chat-model-filter" type="search" data-i18n-placeholder="chat.filter_models" placeholder="Filter models" aria-label="Filter models">
               <select id="chat-model">
                 <option value="gpt-4o-mini">gpt-4o-mini</option>
                 <option value="gpt-4.1-mini">gpt-4.1-mini</option>
                 <option value="mistral-small">mistral-small</option>
                 <option value="llama3.2">llama3.2</option>
               </select>
-              <label for="chat-temperature" data-i18n="chat.temp">Temp</label>
-              <input id="chat-temperature" type="number" min="0" max="2" step="0.1" value="0.7">
-              <label for="chat-max-tokens" data-i18n="chat.max_tokens">Max tokens</label>
-              <input id="chat-max-tokens" type="number" min="0" max="131072" step="1" value="0">
-              <input id="chat-system-prompt" type="text" data-i18n-placeholder="chat.system_prompt_placeholder" placeholder="System prompt for this conversation" aria-label="System prompt for this conversation">
               <button class="action-btn icon-only-btn" id="refresh-models-btn" type="button" title="Refresh models" aria-label="Refresh models">
                 <span aria-hidden="true">↻</span>
               </button>
+              <label for="chat-response-style" data-i18n="chat.response_style">Response</label>
+              <select id="chat-response-style">
+                <option value="precise" data-i18n="chat.style_precise">Precise</option>
+                <option value="balanced" data-i18n="chat.style_balanced">Balanced</option>
+                <option value="creative" data-i18n="chat.style_creative">Creative</option>
+              </select>
+              <label for="chat-model-filter" class="chat-advanced-field" data-i18n="chat.filter">Filter</label>
+              <input id="chat-model-filter" class="chat-advanced-field" type="search" data-i18n-placeholder="chat.filter_models" placeholder="Filter models" aria-label="Filter models">
+              <label for="chat-temperature" class="chat-advanced-field" data-i18n="chat.temp">Temp</label>
+              <input id="chat-temperature" class="chat-advanced-field" type="number" min="0" max="2" step="0.1" value="0.7">
+              <label for="chat-max-tokens" class="chat-advanced-field" data-i18n="chat.max_tokens">Max tokens</label>
+              <input id="chat-max-tokens" class="chat-advanced-field" type="number" min="0" max="131072" step="1" value="0">
+              <input id="chat-system-prompt" class="chat-advanced-field" type="text" data-i18n-placeholder="chat.system_prompt_placeholder" placeholder="System prompt for this conversation" aria-label="System prompt for this conversation">
             </div>
-            <div class="last-used-models" id="last-used-models"></div>
           </div>
         </main>
       </div>
@@ -114,6 +120,12 @@
               <label data-i18n="settings.response_footer">Response footer</label>
               <label class="checkbox-row" for="show-meta-footer">
                 <input type="checkbox" id="show-meta-footer"> <span data-i18n="settings.show_meta">Show model &amp; token info after each response</span>
+              </label>
+            </div>
+            <div class="field-group">
+              <label data-i18n="settings.expert_mode">Expert mode</label>
+              <label class="checkbox-row" for="expert-mode">
+                <input type="checkbox" id="expert-mode"> <span data-i18n="settings.expert_mode_desc">Show advanced prompt controls in chat</span>
               </label>
             </div>
             <div class="field-group">

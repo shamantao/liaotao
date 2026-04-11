@@ -41,6 +41,8 @@ export async function loadGeneralSettings() {
   appState.settings.language = settings.language || appState.settings.language || "en";
   appState.settings.theme = settings.theme || "dark";
   appState.settings.defaultSystemPrompt = settings.default_system_prompt || "";
+  appState.settings.expertMode = Boolean(settings.expert_mode);
+  appState.settings.responseStyle = settings.response_style || appState.settings.responseStyle || "balanced";
   applySettingsToUI();
   persistSettingsToStorage();
 }
@@ -50,12 +52,16 @@ export async function saveGeneralSettings() {
     language: appState.settings.language,
     theme: appState.settings.theme,
     default_system_prompt: appState.settings.defaultSystemPrompt || "",
+    expert_mode: Boolean(appState.settings.expertMode),
+    response_style: appState.settings.responseStyle || "balanced",
   };
   const updated = await bridge.callService("UpdateGeneralSettings", payload);
   if (updated && typeof updated === "object") {
     appState.settings.language = updated.language || appState.settings.language;
     appState.settings.theme = updated.theme || appState.settings.theme;
     appState.settings.defaultSystemPrompt = updated.default_system_prompt || "";
+    appState.settings.expertMode = Boolean(updated.expert_mode);
+    appState.settings.responseStyle = updated.response_style || appState.settings.responseStyle || "balanced";
     persistSettingsToStorage();
     applySettingsToUI();
   }

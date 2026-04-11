@@ -24,6 +24,8 @@ type GeneralSettings struct {
 	Language            string `json:"language" toml:"language"`
 	Theme               string `json:"theme" toml:"theme"`
 	DefaultSystemPrompt string `json:"default_system_prompt" toml:"default_system_prompt"`
+	ExpertMode          bool   `json:"expert_mode" toml:"expert_mode"`
+	ResponseStyle       string `json:"response_style" toml:"response_style"`
 }
 
 type settingsExportProvider struct {
@@ -82,11 +84,38 @@ func sanitizeTheme(v string) string {
 	return theme
 }
 
+func sanitizeResponseStyle(v string) string {
+	style := strings.ToLower(strings.TrimSpace(v))
+	switch style {
+	case "precise", "balanced", "creative":
+		return style
+	default:
+		return "balanced"
+	}
+}
+
+func parseBoolSetting(v string, fallback bool) bool {
+	raw := strings.ToLower(strings.TrimSpace(v))
+	if raw == "" {
+		return fallback
+	}
+	switch raw {
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off":
+		return false
+	default:
+		return fallback
+	}
+}
+
 func normalizeGeneralSettings(in GeneralSettings) GeneralSettings {
 	return GeneralSettings{
 		Language:            sanitizeLanguage(in.Language),
 		Theme:               sanitizeTheme(in.Theme),
 		DefaultSystemPrompt: strings.TrimSpace(in.DefaultSystemPrompt),
+		ExpertMode:          in.ExpertMode,
+		ResponseStyle:       sanitizeResponseStyle(in.ResponseStyle),
 	}
 }
 
@@ -120,6 +149,8 @@ func (s *Service) GetGeneralSettings(ctx context.Context) (GeneralSettings, erro
 		Language:            s.getSettingValue(ctx, "language", "en"),
 		Theme:               s.getSettingValue(ctx, "theme", "dark"),
 		DefaultSystemPrompt: s.getSettingValue(ctx, "default_system_prompt", ""),
+		ExpertMode:          parseBoolSetting(s.getSettingValue(ctx, "expert_mode", "0"), false),
+		ResponseStyle:       s.getSettingValue(ctx, "response_style", "balanced"),
 	}
 	return normalizeGeneralSettings(settings), nil
 }
@@ -134,6 +165,12 @@ func (s *Service) UpdateGeneralSettings(ctx context.Context, payload GeneralSett
 		return GeneralSettings{}, err
 	}
 	if err := s.setSettingValue(ctx, "default_system_prompt", normalized.DefaultSystemPrompt); err != nil {
+		return GeneralSettings{}, err
+	}
+	if err := s.setSettingValue(ctx, "expert_mode", fmt.Sprintf("%t", normalized.ExpertMode)); err != nil {
+		return GeneralSettings{}, err
+	}
+	if err := s.setSettingValue(ctx, "response_style", normalized.ResponseStyle); err != nil {
 		return GeneralSettings{}, err
 	}
 	return normalized, nil

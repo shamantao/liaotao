@@ -71,11 +71,13 @@ func TestSettings_GeneralRoundtrip(t *testing.T) {
 		Language:            "en",
 		Theme:               "dark",
 		DefaultSystemPrompt: "Be concise",
+		ExpertMode:          true,
+		ResponseStyle:       "creative",
 	})
 	if err != nil {
 		t.Fatalf("UpdateGeneralSettings: %v", err)
 	}
-	if updated.Language != "en" || updated.DefaultSystemPrompt != "Be concise" {
+	if updated.Language != "en" || updated.DefaultSystemPrompt != "Be concise" || !updated.ExpertMode || updated.ResponseStyle != "creative" {
 		t.Fatalf("unexpected update result: %+v", updated)
 	}
 
@@ -83,7 +85,7 @@ func TestSettings_GeneralRoundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetGeneralSettings: %v", err)
 	}
-	if loaded.Language != "en" || loaded.Theme != "dark" || loaded.DefaultSystemPrompt != "Be concise" {
+	if loaded.Language != "en" || loaded.Theme != "dark" || loaded.DefaultSystemPrompt != "Be concise" || !loaded.ExpertMode || loaded.ResponseStyle != "creative" {
 		t.Fatalf("unexpected loaded settings: %+v", loaded)
 	}
 }
@@ -117,7 +119,7 @@ func TestSettings_ExportImportConfiguration(t *testing.T) {
 	svc := newSettingsTestService(t)
 	ctx := context.Background()
 
-	_, _ = svc.UpdateGeneralSettings(ctx, GeneralSettings{Language: "fr", Theme: "dark", DefaultSystemPrompt: "Global prompt"})
+	_, _ = svc.UpdateGeneralSettings(ctx, GeneralSettings{Language: "fr", Theme: "dark", DefaultSystemPrompt: "Global prompt", ExpertMode: false, ResponseStyle: "balanced"})
 	_, err := svc.CreateProvider(ctx, CreateProviderPayload{
 		Name:        "Provider One",
 		Type:        "openai-compatible",
@@ -161,7 +163,7 @@ func TestSettings_ExportImportConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetGeneralSettings imported: %v", err)
 	}
-	if settings.DefaultSystemPrompt != "Global prompt" {
+	if settings.DefaultSystemPrompt != "Global prompt" || settings.ExpertMode || settings.ResponseStyle != "balanced" {
 		t.Fatalf("general settings not imported: %+v", settings)
 	}
 

@@ -56,6 +56,10 @@
   min-width: 120px;
 }
 
+#chat-response-style {
+  min-width: 140px;
+}
+
 #chat-model-filter {
   min-width: 160px;
 }
@@ -65,26 +69,10 @@
   flex: 1;
 }
 
-.last-used-models {
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
+.chat-advanced-field {
+  transition: opacity 120ms ease;
 }
 
-.last-used-chip {
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: rgba(62, 142, 126, 0.12);
-  color: var(--text-dim);
-  padding: 0.18rem 0.6rem;
-  font-size: 0.72rem;
-  cursor: pointer;
-}
-
-.last-used-chip:hover {
-  color: var(--text);
-  border-color: var(--accent);
-}
 
 /* ── Message list ──────────────────────────────────────────────────── */
 .messages {

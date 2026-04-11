@@ -21,7 +21,14 @@ export const appState = {
   lastUsedModels:      [],     // [{ providerId, providerName, model, usedAt }]
   modelFilterQuery:    "",
   settingsSection:     "general",
-  settings: { language: "en", theme: "dark", showMetaFooter: true, defaultSystemPrompt: "" },
+  settings: {
+    language: "en",
+    theme: "dark",
+    showMetaFooter: true,
+    defaultSystemPrompt: "",
+    expertMode: false,
+    responseStyle: "balanced",
+  },
 };
 
 // ── DOM refs ───────────────────────────────────────────────────────────────
@@ -41,6 +48,8 @@ export const els = {
   chatProvider:   document.getElementById("chat-provider"),
   chatModelFilter: document.getElementById("chat-model-filter"),
   chatModel:      document.getElementById("chat-model"),
+  chatResponseStyle: document.getElementById("chat-response-style"),
+  chatAdvancedFields: document.querySelectorAll(".chat-advanced-field"),
   chatTemperature: document.getElementById("chat-temperature"),
   chatMaxTokens:   document.getElementById("chat-max-tokens"),
   chatSystemPrompt: document.getElementById("chat-system-prompt"),
@@ -55,6 +64,7 @@ export const els = {
   language: document.getElementById("language"),
   theme:    document.getElementById("theme"),
   defaultSystemPrompt: document.getElementById("default-system-prompt"),
+  expertMode: document.getElementById("expert-mode"),
   exportConfigBtn: document.getElementById("export-config-btn"),
   importConfigInput: document.getElementById("import-config-input"),
   aboutContent: document.getElementById("about-content"),
@@ -117,4 +127,16 @@ export function applySettingsToUI() {
   if (els.theme)    els.theme.value    = appState.settings.theme    || "dark";
   if (els.showMetaFooter) els.showMetaFooter.checked = appState.settings.showMetaFooter !== false;
   if (els.defaultSystemPrompt) els.defaultSystemPrompt.value = appState.settings.defaultSystemPrompt || "";
+  if (els.expertMode) els.expertMode.checked = Boolean(appState.settings.expertMode);
+  if (els.chatResponseStyle) els.chatResponseStyle.value = appState.settings.responseStyle || "balanced";
+  applyChatModeToUI();
+}
+
+export function applyChatModeToUI() {
+  const isExpert = Boolean(appState.settings.expertMode);
+  if (els.chatAdvancedFields && els.chatAdvancedFields.forEach) {
+    els.chatAdvancedFields.forEach((field) => {
+      field.style.display = isExpert ? "" : "none";
+    });
+  }
 }

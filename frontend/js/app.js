@@ -4,7 +4,7 @@
   event bindings, and app initialization. All domain logic is in sub-modules.
 */
 
-import { appState, els, loadSettingsFromStorage, persistSettingsToStorage, applySettingsToUI } from "./state.js";
+import { appState, els, loadSettingsFromStorage, persistSettingsToStorage, applySettingsToUI, applyChatModeToUI } from "./state.js";
 import { bridge } from "./bridge.js";
 import {
   loadProviders, loadProviderProfiles, loadModels,
@@ -139,6 +139,14 @@ function bindEvents() {
     saveActiveConversationSettings();
   });
 
+  if (els.chatResponseStyle) {
+    els.chatResponseStyle.addEventListener("change", async () => {
+      appState.settings.responseStyle = els.chatResponseStyle.value || "balanced";
+      persistSettingsToStorage();
+      await saveGeneralSettings();
+    });
+  }
+
   if (els.chatModelFilter) {
     els.chatModelFilter.addEventListener("input", () => {
       appState.modelFilterQuery = els.chatModelFilter.value || "";
@@ -220,6 +228,14 @@ function bindEvents() {
       generalPromptDebounce = setTimeout(() => {
         saveGeneralSettings();
       }, 240);
+    });
+  }
+  if (els.expertMode) {
+    els.expertMode.addEventListener("change", async () => {
+      appState.settings.expertMode = els.expertMode.checked;
+      persistSettingsToStorage();
+      applyChatModeToUI();
+      await saveGeneralSettings();
     });
   }
   if (els.exportConfigBtn) {

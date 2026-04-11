@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.2.0] - 2026-04-11
+
+### Added
+- **UX-01**: Mode Expert/Simple — toggle dans Settings > Général. En mode Simple, la toolbar n'affiche que Provider, Modèle, Refresh et Style de réponse.
+- **UX-01**: Sélecteur de style de réponse (Précise / Équilibrée / Créative) dans la toolbar, toujours visible.
+- **UX-01**: Mapping automatique de température : Précise → 0.2, Équilibrée → 0.7, Créative → 1.0 (mode Simple uniquement).
+- **UX-01**: `expert_mode` et `response_style` persistés en SQLite et restaurés au démarrage.
+- Traductions complètes des nouveaux clés EN / FR / zh-TW.
+
+### Removed
+- Barre "derniers modèles utilisés" (chips sous la toolbar) — le modèle courant est déjà visible dans le sélecteur et dans chaque réponse.
+
 ## [0.1.9] - 2026-04-11
 
 ### Added
