@@ -6,6 +6,7 @@
 
 import { appState, els, persistSettingsToStorage, applySettingsToUI } from "./state.js";
 import { bridge } from "./bridge.js";
+import { t } from "./i18n.js";
 
 function escapeHTML(value) {
   return String(value || "")
@@ -118,6 +119,18 @@ export async function loadAboutInfo() {
     ? info.credits.map((item) => `<li>${escapeHTML(item)}</li>`).join("")
     : "";
 
+  const isMac = navigator.platform.includes("Mac");
+  const mod = isMac ? "⌘" : "Ctrl";
+  const shortcuts = [
+    [`${mod}+K`,   t("settings.shortcut_new_chat")],
+    [`${mod}+/`,   t("settings.shortcut_focus")],
+    [`${mod}+B`,   t("settings.shortcut_sidebar")],
+    ["Escape",     t("settings.shortcut_stop")],
+  ];
+  const shortcutRows = shortcuts
+    .map(([key, desc]) => `<tr><td><kbd>${key}</kbd></td><td>${escapeHTML(desc)}</td></tr>`)
+    .join("");
+
   els.aboutContent.innerHTML = `
     <p><strong>${escapeHTML(info.name || "liaotao")}</strong> v${escapeHTML(info.version || "dev")}</p>
     <p>${escapeHTML(info.description || "")}</p>
@@ -125,5 +138,7 @@ export async function loadAboutInfo() {
     <ul>${links}</ul>
     <h4>Credits</h4>
     <ul>${credits}</ul>
+    <h4>${t("settings.keyboard_shortcuts")}</h4>
+    <table class="shortcuts-table"><tbody>${shortcutRows}</tbody></table>
   `;
 }

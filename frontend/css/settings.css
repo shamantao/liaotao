@@ -224,6 +224,29 @@
 
   .about-content a {
     color: var(--accent);
+
+    .shortcuts-table {
+      border-collapse: collapse;
+      margin: 0.25rem 0 0.8rem;
+      font-size: 0.85rem;
+    }
+
+    .shortcuts-table td {
+      padding: 0.25rem 0.8rem 0.25rem 0;
+      vertical-align: middle;
+    }
+
+    kbd {
+      display: inline-block;
+      padding: 0.1rem 0.45rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: rgba(255,255,255,0.06);
+      font-family: ui-monospace, monospace;
+      font-size: 0.78rem;
+      color: var(--text);
+      white-space: nowrap;
+    }
   }
 
   /* ── Providers two-column layout ───────────────────────────────────── */

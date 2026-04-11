@@ -188,6 +188,45 @@ function bindEvents() {
 
   els.prompt.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendPrompt(); }
+
+    // ── Global keyboard shortcuts (KEY-01 … KEY-04) ──────────────────────
+    document.addEventListener("keydown", (e) => {
+      const mod = e.metaKey || e.ctrlKey;
+
+      // KEY-04 — Escape: stop generation or close Settings
+      if (e.key === "Escape") {
+        if (appState.isStreaming) { cancelGeneration(); return; }
+        const settingsPanel = document.getElementById("settings");
+        if (settingsPanel && settingsPanel.classList.contains("active")) {
+          switchTab("chat");
+        }
+        return;
+      }
+
+      // Skip shortcuts when typing in an input / textarea / select
+      const tag = document.activeElement ? document.activeElement.tagName : "";
+      if (!mod && (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT")) return;
+      if (!mod) return;
+
+      // KEY-01 — Cmd+K: new conversation
+      if (e.key === "k" || e.key === "K") {
+        e.preventDefault();
+        newConversation();
+        return;
+      }
+      // KEY-02 — Cmd+/: focus prompt input
+      if (e.key === "/") {
+        e.preventDefault();
+        switchTab("chat");
+        els.prompt.focus();
+        return;
+      }
+      // KEY-03 — Cmd+B: toggle sidebar
+      if (e.key === "b" || e.key === "B") {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    });
   });
 
   if (els.conversationSearch) {

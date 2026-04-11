@@ -60,7 +60,12 @@
     "default_system_prompt_placeholder": "Utilisé pour les nouvelles conversations",
     "configuration": "Configuration",
     "export_toml": "Exporter TOML",
-    "import_toml": "Importer TOML"
+    "import_toml": "Importer TOML",
+    "keyboard_shortcuts": "Raccourcis clavier",
+    "shortcut_new_chat": "Nouvelle conversation",
+    "shortcut_focus": "Aller au champ de saisie",
+    "shortcut_sidebar": "Afficher/masquer la barre latérale",
+    "shortcut_stop": "Arrêter la génération / fermer les Paramètres"
   },
   "providers": {
     "title": "Fournisseurs",

@@ -60,7 +60,12 @@
     "default_system_prompt_placeholder": "Used for new conversations",
     "configuration": "Configuration",
     "export_toml": "Export TOML",
-    "import_toml": "Import TOML"
+    "import_toml": "Import TOML",
+    "keyboard_shortcuts": "Keyboard Shortcuts",
+    "shortcut_new_chat": "New conversation",
+    "shortcut_focus": "Focus input",
+    "shortcut_sidebar": "Toggle sidebar",
+    "shortcut_stop": "Stop generation / close Settings"
   },
   "providers": {
     "title": "Providers",
