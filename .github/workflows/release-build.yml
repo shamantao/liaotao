@@ -1,0 +1,70 @@
+# release-build.yml -- Cross-platform build and packaging workflow for liaotao.
+# Responsibilities: run tests, build release artifacts on macOS/Windows/Linux, and auto-version from tags.
+
+name: build-and-release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+jobs:
+  test-internal:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Run internal tests
+        run: go test ./internal/... -v -timeout 60s
+
+  build:
+    needs: test-internal
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-13
+            label: macos-intel
+          - os: macos-14
+            label: macos-apple-silicon
+          - os: macos-14
+            label: macos-universal
+            universal: "1"
+          - os: ubuntu-22.04
+            label: linux-x64
+          - os: windows-2022
+            label: windows-x64
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Install Wails CLI
+        shell: bash
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+
+      - name: Build artifacts
+        shell: bash
+        env:
+          BUILD_UNIVERSAL: ${{ matrix.universal || '0' }}
+        run: bash ci/build-release.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: liaotao-${{ matrix.label }}
+          path: build/artifacts/*
+          if-no-files-found: warn
