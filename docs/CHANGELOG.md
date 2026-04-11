@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## [0.1.8] - 2026-04-11
+
+### Added
+- **I18N-01**: Lightweight i18n engine (`frontend/js/i18n.js`) — hierarchical JSON keys, `t(key, vars)` with `{{var}}` interpolation, automatic EN fallback.
+- **I18N-01**: Translation bundles for English (`en.json`), French (`fr.json`), and Traditional Chinese (`zh-TW.json`).
+- **I18N-02**: Language selector in General Settings now supports EN / FR / zh-TW (persisted in SQLite and applied instantly without reload).
+- **I18N-05**: All static HTML strings annotated with `data-i18n` / `data-i18n-placeholder` / `data-i18n-title`; all dynamic JS strings migrated to `t()` in providers, conversations, chat, and MCP modules.
+
+### Changed
+- **I18N-03**: English is now the default language (was French).
+- **I18N-04**: French translation complete (≈100 % UI coverage).
+
 ## [0.1.7] - 2026-04-10
 
 ### Added

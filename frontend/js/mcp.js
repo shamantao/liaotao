@@ -6,6 +6,7 @@
 
 import { bridge } from "./bridge.js";
 import { parseWailsError, applyFieldError, clearFieldError } from "./errors.js";
+import { t }       from "./i18n.js";
 
 // ── DOM refs (scoped to MCP section) ──────────────────────────────────────
 const $ = (id) => document.getElementById(id);
@@ -42,19 +43,19 @@ function inlineConfirm(btn, onConfirm) {
     delete btn.dataset.confirming;
     clearTimeout(Number(btn.dataset.confirmTimer));
     btn.innerHTML = btn.dataset.origLabel || "🗑";
-    btn.title = btn.dataset.origTitle || "Delete MCP server";
+    btn.title = btn.dataset.origTitle || t("sidebar.delete_title");
     onConfirm();
     return;
   }
   btn.dataset.confirming = "1";
   btn.dataset.origLabel = btn.innerHTML;
-  btn.dataset.origTitle = btn.title || "Delete MCP server";
+  btn.dataset.origTitle = btn.title || t("sidebar.delete_title");
   btn.innerHTML = "✓";
-  btn.title = "Confirm deletion";
+  btn.title = t("sidebar.confirm_deletion");
   btn.dataset.confirmTimer = String(setTimeout(() => {
     delete btn.dataset.confirming;
     btn.innerHTML = btn.dataset.origLabel || "🗑";
-    btn.title = btn.dataset.origTitle || "Delete MCP server";
+    btn.title = btn.dataset.origTitle || t("sidebar.delete_title");
   }, 3000));
 }
 
@@ -74,7 +75,7 @@ export async function loadMCPServers() {
   if (!e.list) return;
 
   if (!Array.isArray(servers) || servers.length === 0) {
-    e.list.innerHTML = "<p class=\"empty-hint\">No MCP servers configured.</p>";
+    e.list.innerHTML = `<p class="empty-hint">${t("mcp.no_servers")}</p>`;
     return;
   }
 
@@ -178,11 +179,11 @@ async function pingMCPServer() {
   const e = mcpEls();
   const id = Number(e.id.value);
   if (!id) {
-    if (e.pingStatus) { e.pingStatus.className = "test-result err"; e.pingStatus.textContent = "Save the server first."; }
+    if (e.pingStatus) { e.pingStatus.className = "test-result err"; e.pingStatus.textContent = t("providers.save_first"); }
     return;
   }
   if (e.pingBtn)    e.pingBtn.disabled = true;
-  if (e.pingStatus) { e.pingStatus.className = "test-result"; e.pingStatus.textContent = "Testing…"; }
+  if (e.pingStatus) { e.pingStatus.className = "test-result"; e.pingStatus.textContent = t("providers.testing"); }
   if (e.toolsList)  { e.toolsList.innerHTML = ""; e.toolsList.classList.add("hidden"); }
 
   try {

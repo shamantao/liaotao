@@ -8,6 +8,7 @@ import { appState, els, persistSettingsToStorage } from "./state.js";
 import { bridge }                  from "./bridge.js";
 import { getActiveProvider, syncChatModelSelector } from "./providers.js";
 import { renderMessages, loadConversationMessages } from "./chat.js";
+import { t }                       from "./i18n.js";
 
 const SIDEBAR_DATE_TIME_FORMAT = new Intl.DateTimeFormat(undefined, {
   month: "short",
@@ -43,25 +44,25 @@ function dateOnly(date) {
 
 function getConversationGroup(updatedAt) {
   const date = parseUpdatedAt(updatedAt);
-  if (!date) return "Older";
+  if (!date) return t("sidebar.older");
 
   const now = new Date();
   const today = dateOnly(now);
   const target = dateOnly(date);
   const diffDays = Math.floor((today.getTime() - target.getTime()) / 86400000);
 
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays >= 2 && diffDays <= 6) return "This Week";
-  return "Older";
+  if (diffDays === 0) return t("sidebar.today");
+  if (diffDays === 1) return t("sidebar.yesterday");
+  if (diffDays >= 2 && diffDays <= 6) return t("sidebar.this_week");
+  return t("sidebar.older");
 }
 
 function groupConversations(items) {
   const groups = new Map([
-    ["Today", []],
-    ["Yesterday", []],
-    ["This Week", []],
-    ["Older", []],
+    [t("sidebar.today"),     []],
+    [t("sidebar.yesterday"), []],
+    [t("sidebar.this_week"), []],
+    [t("sidebar.older"),     []],
   ]);
   items.forEach((conv) => {
     groups.get(getConversationGroup(conv.updatedAt)).push(conv);
@@ -70,10 +71,10 @@ function groupConversations(items) {
 }
 
 function renderEmptyConversationState() {
-  const suffix = appState.conversationSearchQuery
-    ? " for this search."
-    : ".";
-  els.conversationList.innerHTML = `<p class="conversation-empty">No conversations${suffix}</p>`;
+  const key = appState.conversationSearchQuery
+    ? "sidebar.no_conversations_search"
+    : "sidebar.no_conversations";
+  els.conversationList.innerHTML = `<p class="conversation-empty">${t(key)}</p>`;
 }
 
 function inlineConfirm(btn, onConfirm) {
@@ -193,7 +194,7 @@ async function renameConversation(conversationID, title) {
     title,
   });
   await reloadConversationList(updated && updated.id ? updated.id : conversationID);
-  els.status.textContent = "conversation renamed";
+  els.status.textContent = t("sidebar.renamed");
 }
 
 function startRenameConversation(row, conv) {
@@ -205,10 +206,10 @@ function startRenameConversation(row, conv) {
   if (!main || !actions) return;
 
   const originalTitle = conv.title || "";
-  main.innerHTML = `<input class="conversation-rename-input" type="text" aria-label="Rename conversation" value="${escapeHTML(originalTitle)}">`;
+  main.innerHTML = `<input class="conversation-rename-input" type="text" aria-label="${t("sidebar.rename_save")}" value="${escapeHTML(originalTitle)}">`;
   actions.innerHTML = `
-    <button class="conversation-rename-btn icon-only-btn" type="button" title="Save" aria-label="Save">✓</button>
-    <button class="conversation-delete-btn icon-only-btn" type="button" title="Cancel" aria-label="Cancel">✕</button>
+    <button class="conversation-rename-btn icon-only-btn" type="button" title="${t("sidebar.rename_save")}" aria-label="${t("sidebar.rename_save")}">✓</button>
+    <button class="conversation-delete-btn icon-only-btn" type="button" title="${t("sidebar.rename_cancel")}" aria-label="${t("sidebar.rename_cancel")}">✕</button>
   `;
 
   const input = main.querySelector(".conversation-rename-input");
@@ -224,7 +225,7 @@ function startRenameConversation(row, conv) {
   const save = async () => {
     const nextTitle = input.value.trim();
     if (!nextTitle) {
-      els.status.textContent = "title required";
+      els.status.textContent = t("sidebar.title_required");
       input.focus();
       return;
     }
@@ -278,7 +279,7 @@ async function deleteConversation(conversationID) {
     await newConversation();
   }
 
-  els.status.textContent = "conversation deleted";
+  els.status.textContent = t("sidebar.deleted");
 }
 
 // ── Conversation sidebar ───────────────────────────────────────────────────

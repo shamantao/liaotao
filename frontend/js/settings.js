@@ -31,7 +31,7 @@ function downloadTextFile(filename, content) {
 export async function loadGeneralSettings() {
   const settings = await bridge.callService("GetGeneralSettings");
   if (!settings || typeof settings !== "object") return;
-  appState.settings.language = settings.language || appState.settings.language || "fr";
+  appState.settings.language = settings.language || appState.settings.language || "en";
   appState.settings.theme = settings.theme || "dark";
   appState.settings.defaultSystemPrompt = settings.default_system_prompt || "";
   applySettingsToUI();

@@ -9,6 +9,7 @@ import { appState, els } from "./state.js";
 import { bridge }        from "./bridge.js";
 import { renderMarkdown, applyEnhancers } from "./markdown.js";
 import { getActiveProvider, rememberLastUsedModel } from "./providers.js";
+import { t }             from "./i18n.js";
 
 // ── Utilities (chat-scoped) ────────────────────────────────────────────────
 export function activeConversation() {
@@ -40,7 +41,7 @@ function thinkingIndicator(m) {
     <span class="thinking-dot"></span>
     <span class="thinking-dot"></span>
     <span class="thinking-dot"></span>
-    <span class="thinking-text">Thinking…</span>
+    <span class="thinking-text">${t("chat.thinking")}</span>
   </div>`;
 }
 
@@ -55,7 +56,7 @@ function toolCallsBlock(m) {
     const safeResult = (tc.result || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     return `<div class="tool-call done">⚙ <strong>${safeName}</strong></div>
       <details class="tool-result">
-        <summary>▶ result</summary>
+        <summary>${t("chat.tool_result")}</summary>
         <pre class="tool-result-content">${safeResult}</pre>
       </details>`;
   }).join("");

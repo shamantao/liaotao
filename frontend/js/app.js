@@ -23,6 +23,7 @@ import {
 import { newConversation, loadPersistedConversations, saveActiveConversationSettings, searchConversations } from "./conversations.js";
 import { loadMCPServers, initMCPFormListeners } from "./mcp.js";
 import { loadGeneralSettings, saveGeneralSettings, exportSettingsTOML, importSettingsTOML, loadAboutInfo } from "./settings.js";
+import { initI18n, setLanguage, applyTranslations } from "./i18n.js";
 
 // ── Settings navigation ────────────────────────────────────────────────────
 function switchSettingsSection(sectionId) {
@@ -195,9 +196,11 @@ function bindEvents() {
     btn.addEventListener("click", () => switchSettingsSection(btn.dataset.section)));
 
   if (els.language) {
-    els.language.addEventListener("change", () => {
+    els.language.addEventListener("change", async () => {
       appState.settings.language = els.language.value;
       persistSettingsToStorage();
+      await setLanguage(appState.settings.language);
+      applyTranslations();
       saveGeneralSettings();
     });
   }
@@ -292,6 +295,9 @@ async function init() {
   loadSettingsFromStorage();
   applySettingsToUI();
   await loadGeneralSettings();
+  // Initialize i18n with the persisted language (falls back to EN).
+  await initI18n(appState.settings.language || "en");
+  applyTranslations();
   bindEvents();
   initMCPFormListeners();
   await loadProviders();

@@ -9,6 +9,7 @@ import { appState, els, persistSettingsToStorage } from "./state.js";
 import { bridge }     from "./bridge.js";
 import { escapeHtml } from "./markdown.js";
 import { parseWailsError, applyFieldError, clearFieldError } from "./errors.js";
+import { t }          from "./i18n.js";
 
 // Module-level cache for PROV-08 preset profiles.
 let providerProfiles = [];
@@ -23,9 +24,9 @@ function providerStatusSymbol(providerID) {
 
 function providerStatusLabel(providerID) {
   const status = appState.providerStatus[providerID] || "unknown";
-  if (status === "connected") return "connected";
-  if (status === "disconnected") return "disconnected";
-  return "unknown";
+  if (status === "connected") return t("providers.status_connected");
+  if (status === "disconnected") return t("providers.status_disconnected");
+  return t("providers.status_unknown");
 }
 
 export function setProviderStatus(providerID, status) {
@@ -56,7 +57,7 @@ export function updateChatProviderSelector() {
 
   if (active.length === 0) {
     els.chatProvider.innerHTML = automatOption +
-      `<option value="" disabled>No providers – add one in Settings</option>`;
+      `<option value="" disabled>${t("chat.no_providers")}</option>`;
     appState.activeProviderId = 0;
     persistSettingsToStorage();
     return;
@@ -112,7 +113,7 @@ export function applyPreset(key) {
   }
   if (prof.docs_url && els.pfDocsLink) {
     els.pfDocsLink.href        = prof.docs_url;
-    els.pfDocsLink.textContent = `Get ${prof.name} API key ↗`;
+    els.pfDocsLink.textContent = t("providers.get_api_key", { name: prof.name });
     els.pfDocsLink.classList.remove("hidden");
   }
 }
@@ -132,7 +133,7 @@ function setModelSelectorOptions(models, selectedModel = "") {
     : [];
 
   if (safeModels.length === 0) {
-    els.chatModel.innerHTML = `<option value="">No models found</option>`;
+    els.chatModel.innerHTML = `<option value="">${t("chat.no_models")}</option>`;
     els.chatModel.value = "";
     return;
   }
@@ -174,7 +175,7 @@ function setUnifiedModelSelectorOptions(selectedModel = "") {
     optionGroups.push(`<optgroup label="${escapeHtml(provider.name)} (${providerStatusLabel(provider.id)})">${options}</optgroup>`);
   }
   if (optionGroups.length === 0) {
-    els.chatModel.innerHTML = `<option value="">Open to load models…</option>`;
+    els.chatModel.innerHTML = `<option value="">${t("chat.open_to_load")}</option>`;
     els.chatModel.value = "";
     return;
   }
@@ -234,7 +235,7 @@ export function renderLastUsedModels() {
       }
       syncChatModelSelector(item.model);
       persistSettingsToStorage();
-      els.status.textContent = "last used model restored";
+      els.status.textContent = t("sidebar.last_used_restored");
     });
   });
 }
@@ -249,7 +250,7 @@ export function syncChatModelSelector(selectedModel = "") {
 
   const prov = getActiveProvider();
   if (!prov) {
-    els.chatModel.innerHTML = `<option value="">Select a provider first</option>`;
+    els.chatModel.innerHTML = `<option value="">${t("chat.select_provider_first")}</option>`;
     els.chatModel.value = "";
     return;
   }
@@ -266,7 +267,7 @@ export function syncChatModelSelector(selectedModel = "") {
     return;
   }
 
-  els.chatModel.innerHTML = `<option value="">Open to load models…</option>`;
+  els.chatModel.innerHTML = `<option value="">${t("chat.open_to_load")}</option>`;
   els.chatModel.value = "";
 }
 
@@ -283,13 +284,13 @@ export async function testProviderConnection() {
   const id = Number(els.pfId.value) || 0;
   if (!id) {
     if (els.pfTestResult) {
-      els.pfTestResult.textContent = "Save the provider first";
+      els.pfTestResult.textContent = t("providers.save_first");
       els.pfTestResult.style.color = "";
     }
     return;
   }
   if (els.pfTestResult) {
-    els.pfTestResult.textContent = "Testing…";
+    els.pfTestResult.textContent = t("providers.testing");
     els.pfTestResult.style.color = "";
   }
   const result = await bridge.callService("TestConnection", { provider_id: id });
@@ -330,7 +331,7 @@ export function renderProvidersList() {
   if (!els.providersList) return;
   els.providersList.innerHTML = "";
   if (appState.providers.length === 0) {
-    els.providersList.innerHTML = `<p class="empty-hint">No providers yet.</p>`;
+    els.providersList.innerHTML = `<p class="empty-hint">${t("providers.no_providers")}</p>`;
     return;
   }
   appState.providers.forEach((p) => {
@@ -343,7 +344,7 @@ export function renderProvidersList() {
         <span class="provider-item-name">${escapeHtml(p.name)}</span>
         <span class="provider-item-type">${escapeHtml(p.type)} · ${providerStatusSymbol(p.id)} ${providerStatusLabel(p.id)}</span>
       </div>
-      ${p.active ? "" : '<span class="inactive-badge">off</span>'}
+      ${p.active ? "" : `<span class="inactive-badge">${t("providers.inactive_badge")}</span>`}
     `;
     item.addEventListener("click", () => openProviderForm(p));
     els.providersList.appendChild(item);
@@ -461,26 +462,26 @@ export async function saveProvider(event) {
   }
 }
 
-// inlineConfirm: 1st click → button shows "Confirmer ?", 2nd click → runs onConfirm.
+// inlineConfirm: 1st click → button shows confirm title, 2nd click → runs onConfirm.
 // Avoids window.confirm() which is silently blocked by Wails/WKWebView.
 function inlineConfirm(btn, onConfirm) {
   if (btn.dataset.confirming === "1") {
     delete btn.dataset.confirming;
     clearTimeout(Number(btn.dataset.confirmTimer));
     btn.innerHTML = btn.dataset.origLabel || "🗑";
-    btn.title = btn.dataset.origTitle || "Delete provider";
+    btn.title = btn.dataset.origTitle || t("sidebar.delete_title");
     onConfirm();
     return;
   }
   btn.dataset.confirming = "1";
   btn.dataset.origLabel = btn.innerHTML;
-  btn.dataset.origTitle = btn.title || "Delete provider";
+  btn.dataset.origTitle = btn.title || t("sidebar.delete_title");
   btn.innerHTML = "✓";
-  btn.title = "Confirm deletion";
+  btn.title = t("sidebar.confirm_deletion");
   btn.dataset.confirmTimer = String(setTimeout(() => {
     delete btn.dataset.confirming;
     btn.innerHTML = btn.dataset.origLabel || "🗑";
-    btn.title = btn.dataset.origTitle || "Delete provider";
+    btn.title = btn.dataset.origTitle || t("sidebar.delete_title");
   }, 3000));
 }
 

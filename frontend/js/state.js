@@ -113,7 +113,7 @@ export function persistSettingsToStorage() {
 }
 
 export function applySettingsToUI() {
-  if (els.language) els.language.value = appState.settings.language || "fr";
+  if (els.language) els.language.value = appState.settings.language || "en";
   if (els.theme)    els.theme.value    = appState.settings.theme    || "dark";
   if (els.showMetaFooter) els.showMetaFooter.checked = appState.settings.showMetaFooter !== false;
   if (els.defaultSystemPrompt) els.defaultSystemPrompt.value = appState.settings.defaultSystemPrompt || "";
