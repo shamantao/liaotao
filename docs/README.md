@@ -1,29 +1,37 @@
 # liaotao
 
-Date: 2026-04-04
+Date: 2026-04-11
 Stack: wails-go
-Template version: 1.0.0
-Profile: minimal
 
 ## Overview
-<!-- Describe your project here -->
+liaotao is a local-first desktop AI chat application with:
+- OpenAI-compatible providers and Ollama
+- MCP server integration
+- Conversation history and search
+- Settings import/export (TOML)
+- Cross-platform desktop builds via Wails
 
 ## Requirements
-<!-- List runtime dependencies (ffmpeg, ffprobe, etc.) -->
+- Go >= 1.22
+- Wails CLI (`wails3`)
+- Node.js >= 20
+- Wails platform prerequisites: https://wails.io/docs/gettingstarted/installation
 
 ## Getting Started
 ```bash
-# see adapter-specific instructions in the adapter README
+git clone <your-repo-url>
+cd liaotao
+wails3 dev
 ```
 
 ## Quality Checks (mandatory baseline)
 Run these commands before publishing or opening a pull request:
 
 ```bash
-bash scripts/test-integrity.sh
-bash scripts/test-dependencies.sh
-bash scripts/check-secrets.sh
-bash scripts/healthcheck.sh --stack wails-go
+bash ci/test-integrity.sh
+bash ci/test-dependencies.sh
+bash ci/check-secrets.sh
+bash ci/healthcheck.sh --stack wails-go
 ```
 
 What this baseline does:
@@ -38,6 +46,18 @@ Project-specific tests (business logic, E2E details) remain the responsibility o
 Edit `config/default.toml` to adjust defaults.  
 User overrides go in `~/.config/liaotao/user.toml`.
 
+## Local Release Build
+```bash
+bash ci/build-release.sh
+```
+
+Build outputs are written to `build/artifacts/`.
+
+## CI and Versioning
+- Workflow file: `.github/workflows/release-build.yml`
+- Version resolver: `ci/release-version.sh`
+- Tag format: `vMAJOR.MINOR.PATCH`
+
 ## Logs
 Logs are written to `logs/` (JSON + human-readable).
 
@@ -51,24 +71,26 @@ Always start in `debug` mode until you trust the workflow.
 ```
 liaotao/
   LICENSE
+  VERSION
   config/
     default.toml
-  docs/
-    ARCHITECTURE.md
-    SECURITY.md
-  logs/
-  reports/
-  scripts/
+  ci/
     check-secrets.sh
     test-integrity.sh
     test-dependencies.sh
     healthcheck.sh
+    build-release.sh
+    release-version.sh
+  docs/
+    ARCHITECTURE.md
+    SECURITY.md
+    CHANGELOG.md
+  logs/
+  reports/
   tests/
-  Jenkinsfile           ← (only if CI profile = jenkins-docker)
-  ci/jenkins/
-    docker-compose.jenkins.yml
-  src-tauri/            ← (tauri-rust only)
-  src/                  ← (tauri-rust only)
+  .github/
+    workflows/
+      release-build.yml
 ```
 
 ## Governance
@@ -77,14 +99,4 @@ liaotao/
 - Security reporting rules are documented in `docs/SECURITY.md`.
 
 ## Optional CI (Jenkins via Docker)
-If your project was generated with CI profile `jenkins-docker`:
-
-```bash
-docker compose -f ci/jenkins/docker-compose.jenkins.yml up -d
-```
-
-Then configure Jenkins to run the pipeline using `Jenkinsfile`.
-
-## Template
-This project was generated from `devwww/tao-init`.  
-See `devwww/tao-init.sh` to generate new projects.
+GitHub Actions is the default CI for this project.
