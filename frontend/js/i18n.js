@@ -108,6 +108,8 @@ export function applyTranslations() {
     el.title = val;
     if (el.getAttribute("aria-label")) el.setAttribute("aria-label", val);
   });
+
+  _applySelectTranslations();
 }
 
 /**
@@ -126,4 +128,25 @@ export async function initI18n(lang) {
 function _resolve(key, bundle) {
   if (!bundle || typeof key !== "string") return undefined;
   return key.split(".").reduce((obj, part) => (obj && typeof obj === "object" ? obj[part] : undefined), bundle);
+}
+
+function _applySelectTranslations() {
+  const languageSelect = document.getElementById("language");
+  if (languageSelect) {
+    const currentValue = languageSelect.value;
+    languageSelect.querySelectorAll("option").forEach((option) => {
+      if (!option.value) return;
+      option.textContent = t(`lang.${option.value}`);
+    });
+    languageSelect.value = currentValue;
+  }
+
+  const themeSelect = document.getElementById("theme");
+  if (themeSelect) {
+    const currentValue = themeSelect.value;
+    themeSelect.querySelectorAll("option[data-i18n]").forEach((option) => {
+      option.textContent = t(option.dataset.i18n);
+    });
+    themeSelect.value = currentValue;
+  }
 }

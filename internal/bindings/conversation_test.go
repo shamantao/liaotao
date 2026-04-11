@@ -253,6 +253,63 @@ func TestConversation_MessageTokenStats(t *testing.T) {
 	}
 }
 
+func TestConversation_DeleteMessagePersists(t *testing.T) {
+	ctx := context.Background()
+	database := newConversationTestDB(t)
+	svc := NewService(database)
+
+	conv, err := svc.CreateConversation(ctx, CreateConversationPayload{
+		Title:      "Delete message test",
+		ProviderID: 0,
+		Model:      "gpt-4o-mini",
+	})
+	if err != nil {
+		t.Fatalf("CreateConversation: %v", err)
+	}
+
+	if err := svc.SaveMessage(ctx, MessagePayload{
+		ConversationID: conv.ID,
+		Role:           "user",
+		Content:        "hello",
+	}); err != nil {
+		t.Fatalf("SaveMessage user: %v", err)
+	}
+	if err := svc.SaveMessage(ctx, MessagePayload{
+		ConversationID: conv.ID,
+		Role:           "assistant",
+		Content:        "world",
+	}); err != nil {
+		t.Fatalf("SaveMessage assistant: %v", err)
+	}
+
+	before, err := svc.ListMessages(ctx, ListMessagesPayload{ConversationID: conv.ID, Limit: 10})
+	if err != nil {
+		t.Fatalf("ListMessages before delete: %v", err)
+	}
+	if len(before) != 2 {
+		t.Fatalf("expected 2 messages before delete, got %d", len(before))
+	}
+
+	res, err := svc.DeleteMessage(ctx, DeleteMessagePayload{ConversationID: conv.ID, MessageID: before[0].ID})
+	if err != nil {
+		t.Fatalf("DeleteMessage: %v", err)
+	}
+	if res["ok"] != true {
+		t.Fatalf("unexpected delete result: %+v", res)
+	}
+
+	after, err := svc.ListMessages(ctx, ListMessagesPayload{ConversationID: conv.ID, Limit: 10})
+	if err != nil {
+		t.Fatalf("ListMessages after delete: %v", err)
+	}
+	if len(after) != 1 {
+		t.Fatalf("expected 1 message after delete, got %d", len(after))
+	}
+	if after[0].Content != "world" {
+		t.Fatalf("unexpected remaining message: %+v", after[0])
+	}
+}
+
 // TestConversation_UpdateConversationSettings verifies per-conversation runtime
 // settings persistence (provider/model/temperature/max_tokens/system_prompt).
 func TestConversation_UpdateConversationSettings(t *testing.T) {

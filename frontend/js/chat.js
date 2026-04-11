@@ -111,7 +111,7 @@ export async function loadConversationMessages(conversationId) {
   if (!conv) return;
   conv.messages = Array.isArray(result)
     ? result.filter((m) => m && typeof m.role === "string")
-             .map((m) => ({ role: m.role, content: m.content || "", tokenStats: m.token_stats || null }))
+             .map((m) => ({ id: Number(m.id) || 0, role: m.role, content: m.content || "", tokenStats: m.token_stats || null }))
     : [];
   renderMessages();
 }
@@ -309,9 +309,28 @@ export function regenerateMessage(index) {
   sendPrompt();
 }
 
-export function deleteMessage(index) {
+export async function deleteMessage(index) {
   const conv = activeConversation();
   if (!conv) return;
+  const msg = conv.messages[index];
+  if (!msg) return;
+
+  if (Number(msg.id) > 0) {
+    try {
+      const res = await bridge.callService("DeleteMessage", {
+        conversation_id: conv.id,
+        message_id: Number(msg.id),
+      });
+      if (!res || res.ok !== true) {
+        els.status.textContent = "delete failed";
+        return;
+      }
+    } catch (err) {
+      els.status.textContent = `delete failed: ${String(err && err.message ? err.message : err)}`;
+      return;
+    }
+  }
+
   conv.messages.splice(index, 1);
   renderMessages();
 }

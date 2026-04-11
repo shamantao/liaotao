@@ -12,7 +12,9 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
 )
@@ -56,11 +58,17 @@ type settingsImportPayload struct {
 }
 
 func sanitizeLanguage(v string) string {
-	lang := strings.ToLower(strings.TrimSpace(v))
-	if lang != "en" && lang != "fr" {
+	lang := strings.TrimSpace(v)
+	switch strings.ToLower(lang) {
+	case "en":
+		return "en"
+	case "fr":
 		return "fr"
+	case "zh-tw":
+		return "zh-TW"
+	default:
+		return "en"
 	}
-	return lang
 }
 
 func sanitizeTheme(v string) string {
@@ -109,7 +117,7 @@ func (s *Service) setSettingValue(ctx context.Context, key string, value string)
 // GetGeneralSettings returns persisted general settings with safe defaults.
 func (s *Service) GetGeneralSettings(ctx context.Context) (GeneralSettings, error) {
 	settings := GeneralSettings{
-		Language:            s.getSettingValue(ctx, "language", "fr"),
+		Language:            s.getSettingValue(ctx, "language", "en"),
 		Theme:               s.getSettingValue(ctx, "theme", "dark"),
 		DefaultSystemPrompt: s.getSettingValue(ctx, "default_system_prompt", ""),
 	}
@@ -199,6 +207,37 @@ func (s *Service) ExportConfiguration(ctx context.Context) (string, error) {
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+// ExportConfigurationToFile writes the TOML export to a local file and returns its path.
+// Primary target is ~/Downloads; falls back to ~ if Downloads is unavailable.
+func (s *Service) ExportConfigurationToFile(ctx context.Context) (map[string]any, error) {
+	tomlText, err := s.ExportConfiguration(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+
+	targetDir := filepath.Join(homeDir, "Downloads")
+	if stat, statErr := os.Stat(targetDir); statErr != nil || !stat.IsDir() {
+		targetDir = homeDir
+	}
+
+	fileName := fmt.Sprintf("liaotao-config-%s.toml", time.Now().Format("20060102-150405"))
+	fullPath := filepath.Join(targetDir, fileName)
+	if err := os.WriteFile(fullPath, []byte(tomlText), 0o600); err != nil {
+		return nil, err
+	}
+
+	return map[string]any{
+		"ok":       true,
+		"path":     fullPath,
+		"filename": fileName,
+	}, nil
 }
 
 // ImportConfiguration imports TOML settings and upserts providers + MCP servers by name.

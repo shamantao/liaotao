@@ -28,6 +28,13 @@ function downloadTextFile(filename, content) {
   URL.revokeObjectURL(url);
 }
 
+async function copyTextToClipboard(text) {
+  if (!navigator.clipboard?.writeText) {
+    throw new Error("clipboard unavailable");
+  }
+  await navigator.clipboard.writeText(text);
+}
+
 export async function loadGeneralSettings() {
   const settings = await bridge.callService("GetGeneralSettings");
   if (!settings || typeof settings !== "object") return;
@@ -55,13 +62,29 @@ export async function saveGeneralSettings() {
 }
 
 export async function exportSettingsTOML() {
-  const toml = await bridge.callService("ExportConfiguration");
-  if (!toml || typeof toml !== "string") {
-    els.status.textContent = "export failed";
-    return;
+  try {
+    const fileResult = await bridge.callService("ExportConfigurationToFile");
+    if (fileResult && fileResult.ok && fileResult.path) {
+      els.status.textContent = `configuration exported: ${fileResult.path}`;
+      return;
+    }
+
+    // Fallback for environments without backend file export.
+    const toml = await bridge.callService("ExportConfiguration");
+    if (!toml || typeof toml !== "string") {
+      els.status.textContent = "export failed";
+      return;
+    }
+    downloadTextFile("liaotao-config.toml", toml);
+    try {
+      await copyTextToClipboard(toml);
+      els.status.textContent = "configuration exported and copied";
+    } catch {
+      els.status.textContent = "configuration exported";
+    }
+  } catch (err) {
+    els.status.textContent = `export failed: ${String(err && err.message ? err.message : err)}`;
   }
-  downloadTextFile("liaotao-config.toml", toml);
-  els.status.textContent = "configuration exported";
 }
 
 export async function importSettingsTOML(file) {

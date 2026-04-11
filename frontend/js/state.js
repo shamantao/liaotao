@@ -21,7 +21,7 @@ export const appState = {
   lastUsedModels:      [],     // [{ providerId, providerName, model, usedAt }]
   modelFilterQuery:    "",
   settingsSection:     "general",
-  settings: { language: "fr", theme: "dark", showMetaFooter: true, defaultSystemPrompt: "" },
+  settings: { language: "en", theme: "dark", showMetaFooter: true, defaultSystemPrompt: "" },
 };
 
 // ── DOM refs ───────────────────────────────────────────────────────────────

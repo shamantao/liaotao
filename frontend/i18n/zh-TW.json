@@ -8,6 +8,7 @@
     "conversations": "對話記錄",
     "search_placeholder": "搜尋對話",
     "new_chat": "新對話",
+    "conversation_fallback": "對話 {{id}}",
     "today": "今天",
     "yesterday": "昨天",
     "this_week": "本週",

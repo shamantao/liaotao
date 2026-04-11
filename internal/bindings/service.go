@@ -399,6 +399,12 @@ type MessagePayload struct {
 	TokenStats     *MessageTokenStats `json:"token_stats,omitempty"`
 }
 
+// DeleteMessagePayload identifies one message to remove from a conversation.
+type DeleteMessagePayload struct {
+	ConversationID int64 `json:"conversation_id"`
+	MessageID      int64 `json:"message_id"`
+}
+
 func estimateTokenCount(text string) int {
 	trimmed := strings.TrimSpace(text)
 	if trimmed == "" {
@@ -482,6 +488,53 @@ func (s *Service) SaveMessage(ctx context.Context, payload MessagePayload) error
 	}
 
 	return tx.Commit()
+}
+
+// DeleteMessage removes one persisted message and refreshes the parent conversation timestamp.
+func (s *Service) DeleteMessage(ctx context.Context, payload DeleteMessagePayload) (map[string]any, error) {
+	if payload.ConversationID <= 0 {
+		return nil, fmt.Errorf("conversation_id must be > 0")
+	}
+	if payload.MessageID <= 0 {
+		return nil, fmt.Errorf("message_id must be > 0")
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	res, err := tx.ExecContext(
+		ctx,
+		`DELETE FROM messages WHERE id = ? AND conversation_id = ?`,
+		payload.MessageID,
+		payload.ConversationID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if affected == 0 {
+		return map[string]any{"ok": false, "reason": "message_not_found"}, nil
+	}
+
+	if _, err := tx.ExecContext(
+		ctx,
+		`UPDATE conversations SET updated_at = datetime('now') WHERE id = ?`,
+		payload.ConversationID,
+	); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return map[string]any{"ok": true}, nil
 }
 
 // DeleteConversation removes a conversation and all messages (FK cascade).

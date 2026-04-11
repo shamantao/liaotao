@@ -8,6 +8,8 @@ package bindings
 import (
 	"context"
 	"database/sql"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -86,6 +88,31 @@ func TestSettings_GeneralRoundtrip(t *testing.T) {
 	}
 }
 
+func TestSettings_LanguageSupportsZhTW(t *testing.T) {
+	svc := newSettingsTestService(t)
+	ctx := context.Background()
+
+	updated, err := svc.UpdateGeneralSettings(ctx, GeneralSettings{
+		Language:            "zh-TW",
+		Theme:               "dark",
+		DefaultSystemPrompt: "",
+	})
+	if err != nil {
+		t.Fatalf("UpdateGeneralSettings: %v", err)
+	}
+	if updated.Language != "zh-TW" {
+		t.Fatalf("unexpected language after update: %+v", updated)
+	}
+
+	loaded, err := svc.GetGeneralSettings(ctx)
+	if err != nil {
+		t.Fatalf("GetGeneralSettings: %v", err)
+	}
+	if loaded.Language != "zh-TW" {
+		t.Fatalf("unexpected loaded language: %+v", loaded)
+	}
+}
+
 func TestSettings_ExportImportConfiguration(t *testing.T) {
 	svc := newSettingsTestService(t)
 	ctx := context.Background()
@@ -152,5 +179,38 @@ func TestSettings_ExportImportConfiguration(t *testing.T) {
 	}
 	if len(mcpServers) != 1 || mcpServers[0].Name != "mcp-one" {
 		t.Fatalf("mcp servers not imported: %+v", mcpServers)
+	}
+}
+
+func TestSettings_ExportConfigurationToFile(t *testing.T) {
+	svc := newSettingsTestService(t)
+	ctx := context.Background()
+
+	tmpHome := t.TempDir()
+	downloadsDir := filepath.Join(tmpHome, "Downloads")
+	if err := os.MkdirAll(downloadsDir, 0o755); err != nil {
+		t.Fatalf("mkdir downloads: %v", err)
+	}
+	t.Setenv("HOME", tmpHome)
+
+	result, err := svc.ExportConfigurationToFile(ctx)
+	if err != nil {
+		t.Fatalf("ExportConfigurationToFile: %v", err)
+	}
+	if result["ok"] != true {
+		t.Fatalf("expected ok=true, got %+v", result)
+	}
+
+	pathValue, _ := result["path"].(string)
+	if strings.TrimSpace(pathValue) == "" {
+		t.Fatalf("missing exported file path: %+v", result)
+	}
+	raw, readErr := os.ReadFile(pathValue)
+	if readErr != nil {
+		t.Fatalf("read exported file: %v", readErr)
+	}
+	content := string(raw)
+	if !strings.Contains(content, "[general]") {
+		t.Fatalf("unexpected export file content:\n%s", content)
 	}
 }

@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## [0.1.9] - 2026-04-11
+
+### Added
+- **SET-05**: New backend export endpoint `ExportConfigurationToFile` writes TOML directly to disk (`~/Downloads` fallback `~`) for reliable desktop exports.
+- **CONV-08**: New backend message deletion endpoint `DeleteMessage` with persistent SQLite deletion and conversation timestamp refresh.
+- Regression tests:
+	- `TestSettings_ExportConfigurationToFile`
+	- `TestConversation_DeleteMessagePersists`
+	- `TestSettings_LanguageSupportsZhTW`
+
+### Fixed
+- **I18N-02**: `zh-TW` is now fully accepted and persisted by backend settings sanitization (no fallback to French).
+- **I18N-05**: Language selector options now re-render correctly on language switch while preserving selected value.
+- **CONV-03**: Conversation sidebar date/time now refreshes when language changes and uses locale-specific deterministic format.
+- **UI-10**: Deleting a message now persists in DB and no longer reappears after app restart.
+- **SET-05**: Export button now succeeds in desktop context via backend file write, with status path feedback in UI.
+
 ## [0.1.8] - 2026-04-11
 
 ### Added

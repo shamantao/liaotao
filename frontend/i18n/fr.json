@@ -8,6 +8,7 @@
     "conversations": "Conversations",
     "search_placeholder": "Rechercher",
     "new_chat": "Nouvelle conversation",
+    "conversation_fallback": "Conversation {{id}}",
     "today": "Aujourd'hui",
     "yesterday": "Hier",
     "this_week": "Cette semaine",

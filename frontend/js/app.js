@@ -20,7 +20,7 @@ import {
   copyMessage, editMessage, regenerateMessage, deleteMessage,
   attachResponseMeta, appendToolCall, updateToolResult,
 } from "./chat.js";
-import { newConversation, loadPersistedConversations, saveActiveConversationSettings, searchConversations } from "./conversations.js";
+import { newConversation, loadPersistedConversations, saveActiveConversationSettings, searchConversations, renderConversationList } from "./conversations.js";
 import { loadMCPServers, initMCPFormListeners } from "./mcp.js";
 import { loadGeneralSettings, saveGeneralSettings, exportSettingsTOML, importSettingsTOML, loadAboutInfo } from "./settings.js";
 import { initI18n, setLanguage, applyTranslations } from "./i18n.js";
@@ -201,7 +201,8 @@ function bindEvents() {
       persistSettingsToStorage();
       await setLanguage(appState.settings.language);
       applyTranslations();
-      saveGeneralSettings();
+      await saveGeneralSettings();
+      renderConversationList();
     });
   }
   if (els.theme) {

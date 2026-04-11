@@ -10,13 +10,6 @@ import { getActiveProvider, syncChatModelSelector } from "./providers.js";
 import { renderMessages, loadConversationMessages } from "./chat.js";
 import { t }                       from "./i18n.js";
 
-const SIDEBAR_DATE_TIME_FORMAT = new Intl.DateTimeFormat(undefined, {
-  month: "short",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
 function escapeHTML(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -35,7 +28,40 @@ function parseUpdatedAt(value) {
 function formatConversationDateTime(updatedAt) {
   const date = parseUpdatedAt(updatedAt);
   if (!date) return "";
-  return SIDEBAR_DATE_TIME_FORMAT.format(date);
+  return formatLocalizedDateTime(date);
+}
+
+function pad2(value) {
+  return String(value).padStart(2, "0");
+}
+
+function formatLocalizedDateTime(date) {
+  const year = date.getFullYear();
+  const month = pad2(date.getMonth() + 1);
+  const day = pad2(date.getDate());
+  const minutes = pad2(date.getMinutes());
+  const lang = appState.settings.language || "en";
+
+  if (lang === "fr") {
+    return `${day}/${month}/${year} ${pad2(date.getHours())}:${minutes}`;
+  }
+  if (lang === "zh-TW") {
+    return `${year}-${month}-${day} ${pad2(date.getHours())}:${minutes}`;
+  }
+
+  const hours24 = date.getHours();
+  const suffix = hours24 >= 12 ? "pm" : "am";
+  const hours12 = hours24 % 12 || 12;
+  return `${month}/${day}/${year} ${pad2(hours12)}:${minutes}${suffix}`;
+}
+
+function localizeConversationTitle(title, fallbackID = 0) {
+  const rawTitle = String(title || "").trim();
+  if (!rawTitle) return t("sidebar.conversation_fallback", { id: fallbackID || "" }).trim();
+  if (rawTitle === "New chat") return t("sidebar.new_chat");
+  const match = rawTitle.match(/^Conversation\s+(\d+)$/i);
+  if (match) return t("sidebar.conversation_fallback", { id: match[1] });
+  return rawTitle;
 }
 
 function dateOnly(date) {
@@ -82,17 +108,19 @@ function inlineConfirm(btn, onConfirm) {
     delete btn.dataset.confirming;
     clearTimeout(Number(btn.dataset.confirmTimer));
     btn.innerHTML = btn.dataset.origLabel || "🗑";
+    btn.title = btn.dataset.origTitle || t("sidebar.delete_title");
     onConfirm();
     return;
   }
   btn.dataset.confirming = "1";
   btn.dataset.origLabel = btn.innerHTML;
+  btn.dataset.origTitle = btn.title || t("sidebar.delete_title");
   btn.innerHTML = "✓";
-  btn.title = "Confirm deletion";
+  btn.title = t("sidebar.confirm_deletion");
   btn.dataset.confirmTimer = String(setTimeout(() => {
     delete btn.dataset.confirming;
     btn.innerHTML = btn.dataset.origLabel || "🗑";
-    btn.title = "Delete conversation";
+    btn.title = btn.dataset.origTitle || t("sidebar.delete_title");
   }, 3000));
 }
 
@@ -131,7 +159,7 @@ async function activateConversation(conv) {
 function mapConversationSummary(item) {
   return {
     id: item.id,
-    title: item.title || `Conversation ${item.id}`,
+    title: localizeConversationTitle(item.title, item.id),
     providerName: item.provider || "",
     providerId: item.provider_id || 0,
     model: item.model || els.chatModel.value,
@@ -302,14 +330,14 @@ export function renderConversationList() {
       const row = document.createElement("div");
       row.className = `conversation-item${conv.id === appState.activeConversationId ? " active" : ""}`;
       row.innerHTML = `
-        <span class="dot">${(conv.title || "?").slice(0, 1).toUpperCase()}</span>
+        <span class="dot">${localizeConversationTitle(conv.title, conv.id).slice(0, 1).toUpperCase()}</span>
         <div class="conversation-main">
-          <span class="label">${escapeHTML(conv.title)}</span>
+          <span class="label">${escapeHTML(localizeConversationTitle(conv.title, conv.id))}</span>
           <span class="conversation-meta">${formatConversationDateTime(conv.updatedAt)}</span>
         </div>
         <div class="conversation-row-actions">
-          <button class="conversation-rename-btn icon-only-btn" type="button" title="Rename conversation" aria-label="Rename conversation">✎</button>
-          <button class="conversation-delete-btn icon-only-btn" type="button" title="Delete conversation" aria-label="Delete conversation">🗑</button>
+          <button class="conversation-rename-btn icon-only-btn" type="button" title="${t("sidebar.rename_save")}" aria-label="${t("sidebar.rename_save")}">✎</button>
+          <button class="conversation-delete-btn icon-only-btn" type="button" title="${t("sidebar.delete_title")}" aria-label="${t("sidebar.delete_title")}">🗑</button>
         </div>
       `;
 
@@ -371,7 +399,7 @@ export async function newConversation() {
     ? (appState.providers.find((p) => p.id === selectedProviderFromModel) || null)
     : getActiveProvider();
   const created = await bridge.callService("CreateConversation", {
-    title:       "New chat",
+    title:       t("sidebar.new_chat"),
     provider_id: prov ? prov.id : 0,
     model:       selectedModel,
   });
@@ -381,7 +409,7 @@ export async function newConversation() {
   }
   const conv = {
     id:           created.id,
-    title:        created.title || `Conversation ${appState.conversations.length + 1}`,
+    title:        localizeConversationTitle(created.title, appState.conversations.length + 1),
     providerName: prov ? prov.name : "",
     providerId:   prov ? prov.id : 0,
     model:        created.model || selectedModel,
