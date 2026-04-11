@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## [0.2.2] - 2026-04-11
+
+### Added
+- **BUILD-04**: New GitHub Actions workflow for cross-platform build and packaging on macOS (Intel + Apple Silicon + universal attempt), Windows x64, and Linux x64.
+- **BUILD-05**: New release version resolver script (`ci/release-version.sh`) using git tag (`vX.Y.Z`) with fallback to `VERSION`.
+- New CI build orchestration script (`ci/build-release.sh`) to run Wails build and package portable artifacts.
+
+### Changed
+- Release pipeline now collects native installer artifacts when available (`.dmg`, `.pkg`, `.msi`, `.exe`, `.AppImage`, `.deb`, `.rpm`) and uploads them as CI artifacts.
+
 ## [0.2.1] - 2026-04-11
 
 ### Added
