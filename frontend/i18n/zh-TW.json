@@ -61,6 +61,7 @@
     "configuration": "設定檔",
     "export_toml": "匯出 TOML",
     "import_toml": "匯入 TOML",
+    "font_size": "字體大小",
     "keyboard_shortcuts": "鍵盤快捷鍵",
     "shortcut_new_chat": "新對話",
     "shortcut_focus": "聚焦輸入框",

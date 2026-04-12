@@ -9,7 +9,7 @@ info:
   description: "Local-first multi-provider AI chat desktop app"
   copyright: "(c) 2026, shamantao"
   comments: "liaotao desktop"
-  version: "0.2.2"
+  version: "0.2.3"
 
 dev_mode:
   root_path: .

@@ -308,6 +308,13 @@ function bindEvents() {
       renderMessages();
     });
   }
+  if (els.chatFontSize) {
+    els.chatFontSize.addEventListener("change", () => {
+      appState.settings.chatFontSize = els.chatFontSize.value;
+      persistSettingsToStorage();
+      applySettingsToUI();
+    });
+  }
 
   // Streaming events from Go backend
   bridge.eventsOn("chat:chunk", (chunk) => {

@@ -28,6 +28,7 @@ export const appState = {
     defaultSystemPrompt: "",
     expertMode: false,
     responseStyle: "balanced",
+    chatFontSize: "L",
   },
 };
 
@@ -92,6 +93,8 @@ export const els = {
   pfTestResult: document.getElementById("pf-test-result"),
   // ROUTER-08: response metadata footer toggle
   showMetaFooter: document.getElementById("show-meta-footer"),
+  // CORCT-01: chat font size selector
+  chatFontSize: document.getElementById("chat-font-size"),
 };
 
 // ── Settings persistence (localStorage) ───────────────────────────────────
@@ -122,6 +125,15 @@ export function persistSettingsToStorage() {
   }));
 }
 
+// Font size map for CORCT-01 (label → [font-size, icon-size])
+const FONT_SIZE_MAP = {
+  xs: ["0.78rem", "20px"],
+  s:  ["0.88rem", "22px"],
+  m:  ["0.94rem", "24px"],
+  L:  ["1rem",    "26px"],
+  XL: ["1.12rem", "30px"],
+};
+
 export function applySettingsToUI() {
   if (els.language) els.language.value = appState.settings.language || "en";
   if (els.theme)    els.theme.value    = appState.settings.theme    || "dark";
@@ -129,6 +141,10 @@ export function applySettingsToUI() {
   if (els.defaultSystemPrompt) els.defaultSystemPrompt.value = appState.settings.defaultSystemPrompt || "";
   if (els.expertMode) els.expertMode.checked = Boolean(appState.settings.expertMode);
   if (els.chatResponseStyle) els.chatResponseStyle.value = appState.settings.responseStyle || "balanced";
+  if (els.chatFontSize) els.chatFontSize.value = appState.settings.chatFontSize || "L";
+  const [fontSize, iconSize] = FONT_SIZE_MAP[appState.settings.chatFontSize] ?? FONT_SIZE_MAP["L"];
+  document.documentElement.style.setProperty("--chat-font-size", fontSize);
+  document.documentElement.style.setProperty("--chat-icon-size", iconSize);
   applyChatModeToUI();
 }
 

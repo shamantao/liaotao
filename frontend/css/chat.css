@@ -76,6 +76,7 @@
 
 /* ── Message list ──────────────────────────────────────────────────── */
 .messages {
+  font-size: var(--chat-font-size);
   padding: 1rem;
   overflow-y: auto;
   display: flex;
@@ -233,11 +234,11 @@
 .action-btn.icon-only-btn,
 .send-btn.icon-only-btn,
 .stop-btn.icon-only-btn {
-  min-width: 36px;
-  width: 36px;
-  height: 36px;
+  min-width: var(--chat-icon-size);
+  width: var(--chat-icon-size);
+  height: var(--chat-icon-size);
   padding: 0;
-  font-size: 0.95rem;
+  font-size: calc(var(--chat-icon-size) * 0.65);
 }
 
 .action-btn:hover {

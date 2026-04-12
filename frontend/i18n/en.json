@@ -61,6 +61,7 @@
     "configuration": "Configuration",
     "export_toml": "Export TOML",
     "import_toml": "Import TOML",
+    "font_size": "Font size",
     "keyboard_shortcuts": "Keyboard Shortcuts",
     "shortcut_new_chat": "New conversation",
     "shortcut_focus": "Focus input",

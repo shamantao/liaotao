@@ -61,6 +61,7 @@
     "configuration": "Configuration",
     "export_toml": "Exporter TOML",
     "import_toml": "Importer TOML",
+    "font_size": "Taille de police",
     "keyboard_shortcuts": "Raccourcis clavier",
     "shortcut_new_chat": "Nouvelle conversation",
     "shortcut_focus": "Aller au champ de saisie",

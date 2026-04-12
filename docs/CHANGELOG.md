@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## [0.2.3] - 2026-04-12
+
+### Added
+- **CORCT-01**: Adjustable chat font size (5 levels: XS / S / M / L / XL) in Settings > General. The current size (L = 1 rem) is kept as default. Action button icons are proportionally resized (from 36 px down to 26 px at L, scaling with font choice).
+
+### Changed
+- CI: Added `.gitlab-ci.yml` — 3-stage pipeline (test / build / publish:release) triggered on semver tags.
+- CI: `release-version.sh` now reads `CI_COMMIT_TAG` (GitLab) in addition to `GITHUB_REF_NAME` (GitHub Actions).
+
 ## [0.2.2] - 2026-04-11
 
 ### Added
