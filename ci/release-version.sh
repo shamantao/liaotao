@@ -7,7 +7,8 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_DIR"
 
-raw_ref="${GITHUB_REF_NAME:-}"
+# Support both GitHub Actions ($GITHUB_REF_NAME) and GitLab CI ($CI_COMMIT_TAG).
+raw_ref="${GITHUB_REF_NAME:-${CI_COMMIT_TAG:-}}"
 if [[ -n "$raw_ref" && "$raw_ref" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   echo "${raw_ref#v}"
   exit 0

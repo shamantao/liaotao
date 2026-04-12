@@ -1,0 +1,135 @@
+# .gitlab-ci.yml -- GitLab CI/CD pipeline for liaotao.
+# Responsibilities: run tests, build cross-platform releases, publish GitLab release on tag.
+#
+# Trigger: any tag matching vX.Y.Z (semver).
+# Stages: test → build → release
+
+workflow:
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
+
+stages:
+  - test
+  - build
+  - release
+
+# ─── Variables ────────────────────────────────────────────────────────────────
+
+variables:
+  GO_VERSION: "1.25"
+  WAILS_VERSION: "v3.0.0-alpha.74"
+  ARTIFACT_DIR: "build/artifacts"
+
+# ─── Templates ────────────────────────────────────────────────────────────────
+
+.install_go_wails: &install_go_wails |
+  export PATH="$PATH:$HOME/go/bin"
+  go install github.com/wailsapp/wails/v3/cmd/wails3@${WAILS_VERSION}
+
+# ─── Test ─────────────────────────────────────────────────────────────────────
+
+test:internal:
+  stage: test
+  image: golang:1.25-bookworm
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
+    - *install_go_wails
+  script:
+    - go test ./internal/... -v -timeout 60s
+  tags:
+    - saas-linux-small-amd64
+
+# ─── Build Linux ──────────────────────────────────────────────────────────────
+
+build:linux:
+  stage: build
+  image: golang:1.25-bookworm
+  needs: [test:internal]
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
+    - *install_go_wails
+  script:
+    - bash ci/build-release.sh
+  artifacts:
+    name: "liaotao-linux-${CI_COMMIT_TAG}"
+    paths:
+      - build/artifacts/
+    expire_in: 30 days
+  tags:
+    - saas-linux-small-amd64
+
+# ─── Build macOS (Apple Silicon) ──────────────────────────────────────────────
+
+build:macos:
+  stage: build
+  needs: [test:internal]
+  before_script:
+    - export PATH="$PATH:$HOME/go/bin:/opt/homebrew/bin:/usr/local/bin"
+    - command -v go || brew install go
+    - go install github.com/wailsapp/wails/v3/cmd/wails3@${WAILS_VERSION}
+  script:
+    - BUILD_UNIVERSAL=1 bash ci/build-release.sh
+  artifacts:
+    name: "liaotao-macos-${CI_COMMIT_TAG}"
+    paths:
+      - build/artifacts/
+    expire_in: 30 days
+  tags:
+    - saas-macos-medium-m1
+
+# ─── Build Windows ────────────────────────────────────────────────────────────
+
+build:windows:
+  stage: build
+  needs: [test:internal]
+  before_script:
+    - choco install golang --version 1.25.0 -y --no-progress || true
+    - refreshenv
+    - go install github.com/wailsapp/wails/v3/cmd/wails3@${WAILS_VERSION}
+  script:
+    - bash ci/build-release.sh
+  artifacts:
+    name: "liaotao-windows-${CI_COMMIT_TAG}"
+    paths:
+      - build/artifacts/
+    expire_in: 30 days
+  tags:
+    - shared-windows-amd64-2022
+
+# ─── Release ──────────────────────────────────────────────────────────────────
+
+publish:release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  needs:
+    - job: build:linux
+      artifacts: true
+    - job: build:macos
+      artifacts: true
+    - job: build:windows
+      artifacts: true
+  script:
+    - echo "Creating GitLab release for ${CI_COMMIT_TAG}"
+  release:
+    name: "liaotao ${CI_COMMIT_TAG}"
+    tag_name: "$CI_COMMIT_TAG"
+    description: |
+      ## liaotao ${CI_COMMIT_TAG}
+
+      Cross-platform release built by GitLab CI.
+      See [CHANGELOG](https://codeberg.org/shamantao/liaotao/src/branch/main/docs/CHANGELOG.md) for details.
+    assets:
+      links:
+        - name: "Linux x64 (tar.gz)"
+          url: "${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_TAG}/download?job=build:linux"
+          link_type: package
+        - name: "macOS Universal (zip)"
+          url: "${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_TAG}/download?job=build:macos"
+          link_type: package
+        - name: "Windows x64 (zip)"
+          url: "${CI_PROJECT_URL}/-/jobs/artifacts/${CI_COMMIT_TAG}/download?job=build:windows"
+          link_type: package
+  tags:
+    - saas-linux-small-amd64
