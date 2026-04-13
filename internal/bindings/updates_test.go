@@ -7,6 +7,8 @@ package bindings
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -227,4 +229,64 @@ func TestUpdates_FetchLatestRelease_Timeout(t *testing.T) {
 	if err == nil {
 		t.Error("expected error when request times out")
 	}
+}
+
+// TestUpdates_ExtractChecksumsFromReleaseBody validates parsing checksums from release notes.
+func TestUpdates_ExtractChecksumsFromReleaseBody(t *testing.T) {
+	body := `
+liaotao-v0.3.0-darwin-arm64.zip: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+liaotao-v0.3.0-windows-x86_64.zip: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+not-a-checksum-line
+bad-file: 12345
+`
+
+	checksums := extractChecksumsFromReleaseBody(body)
+	if len(checksums) != 2 {
+		t.Fatalf("expected 2 checksum entries, got %d", len(checksums))
+	}
+
+	if got := checksums["liaotao-v0.3.0-darwin-arm64.zip"]; got != "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" {
+		t.Fatalf("unexpected checksum for darwin asset: %q", got)
+	}
+
+	if got := checksums["liaotao-v0.3.0-windows-x86_64.zip"]; got != "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB" {
+		t.Fatalf("unexpected checksum for windows asset: %q", got)
+	}
+}
+
+// TestUpdates_ValidateBinaryChecksum validates checksum success, mismatch and missing-checksum behavior.
+func TestUpdates_ValidateBinaryChecksum(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "liaotao")
+
+	content := []byte("liaotao-update-test")
+	if err := os.WriteFile(filePath, content, 0o755); err != nil {
+		t.Fatalf("write temp binary: %v", err)
+	}
+
+	actual, err := computeFileChecksum(filePath)
+	if err != nil {
+		t.Fatalf("computeFileChecksum failed: %v", err)
+	}
+
+	t.Run("valid checksum", func(t *testing.T) {
+		err := validateBinaryChecksum(filePath, map[string]string{"liaotao": actual})
+		if err != nil {
+			t.Fatalf("expected checksum validation to pass, got: %v", err)
+		}
+	})
+
+	t.Run("checksum mismatch", func(t *testing.T) {
+		err := validateBinaryChecksum(filePath, map[string]string{"liaotao": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"})
+		if err == nil {
+			t.Fatal("expected checksum mismatch error")
+		}
+	})
+
+	t.Run("missing checksum is skipped", func(t *testing.T) {
+		err := validateBinaryChecksum(filePath, map[string]string{"other-binary": actual})
+		if err != nil {
+			t.Fatalf("expected missing-checksum case to be skipped, got: %v", err)
+		}
+	})
 }

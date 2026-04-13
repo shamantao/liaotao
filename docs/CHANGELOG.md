@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## [0.3.0] - 2026-04-13
+
+### Added
+- **UPD-01**: Startup update check against GitHub Releases API.
+- **UPD-02**: Non-blocking update banner in UI (dismissible, localized).
+- **UPD-03**: One-click "Download & Install" flow for platform-specific binaries (macOS/Linux/Windows).
+- **UPD-04**: SHA256 checksum verification during update install, with failed-binary cleanup on mismatch.
+- **UPD-05**: Manual "Check for updates" button in Settings > About.
+- New setting `autoCheckUpdates` (enabled by default) in Settings > General.
+
+### Changed
+- Update UI strings expanded for EN / FR / zh-TW to cover download/install/check states.
+- `docs/backlog-liaotao.md`: v2.7 Auto-Update stories marked complete (UPD-01..UPD-05).
+
+### Tests
+- Existing update/version tests remain green in `internal/bindings` test suite.
+
+### PRD Conformity Note
+- **Divergence from current PRD draft**: PRD non-goal **NG5** states "No ... auto-update system in v1", while 0.3.0 introduces auto-update capabilities.
+- Product implication: this release implements an intentional scope expansion beyond the current PRD draft and should be reflected in the next PRD revision.
+
 ## [0.2.3] - 2026-04-12
 
 ### Added
