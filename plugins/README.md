@@ -8,6 +8,9 @@ Use `.plugin.js` suffix (recommended), for example:
 
 - `my-plugin.plugin.js`
 
+The starter template shipped with liaotao is `template.plugin.example.js`.
+Rename it to `.plugin.js` only when you want to load it.
+
 Plain `.js` files are also loaded.
 
 ## Plugin Module Contract

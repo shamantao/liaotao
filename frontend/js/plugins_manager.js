@@ -21,6 +21,12 @@ import {
   upsertPromptTemplate,
 } from "./plugins_builtin.js";
 
+function formatHookLabel(hookName) {
+  const key = `plugins.hook_${hookName}`;
+  const translated = t(key);
+  return translated === key ? hookName : translated;
+}
+
 function renderPromptLibraryUI() {
   if (!els.pluginsPromptList) return;
   const templates = listPromptTemplates();
@@ -42,7 +48,8 @@ function renderPluginsList() {
     <div class="plugin-item">
       <div class="plugin-main">
         <div class="plugin-name">${plugin.name}</div>
-        <div class="plugin-meta">${plugin.source} · ${plugin.hooks.join(", ")}</div>
+        <div class="plugin-meta">${plugin.source} · ${plugin.hooks.map(formatHookLabel).join(" · ")}</div>
+        <div class="plugin-description">${plugin.description || t("plugins.no_description")}</div>
       </div>
       <label class="checkbox-row" title="${plugin.description || ""}">
         <input type="checkbox" data-plugin-id="${plugin.id}" ${plugin.enabled ? "checked" : ""}>

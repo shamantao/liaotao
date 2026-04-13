@@ -537,3 +537,16 @@
     margin-top: 0.2rem;
     word-break: break-word;
   }
+
+  .plugin-description {
+    font-size: 0.84rem;
+    color: var(--text-soft, #b5b8c3);
+    margin-top: 0.25rem;
+  }
+
+  .plugin-help {
+    margin: 0.15rem 0 0.8rem;
+    color: var(--muted);
+    font-size: 0.84rem;
+    line-height: 1.4;
+  }
