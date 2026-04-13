@@ -98,3 +98,25 @@ func TestEnvOverride(t *testing.T) {
 		t.Errorf("expected mode=normal after env override, got %s", cfg.App.Mode)
 	}
 }
+
+func TestLoadBuiltInDefaultWhenConfigFileMissing(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	orig, _ := os.Getwd()
+	defer os.Chdir(orig)
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatalf("chdir tmp dir: %v", err)
+	}
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() with missing default.toml should fallback, got error: %v", err)
+	}
+
+	if cfg.App.Name != "liaotao" {
+		t.Fatalf("expected built-in app.name=liaotao, got %q", cfg.App.Name)
+	}
+	if cfg.Database.Path == "" {
+		t.Fatal("expected built-in database.path to be set")
+	}
+}

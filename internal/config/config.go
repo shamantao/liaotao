@@ -89,7 +89,9 @@ func Load() (*AppConfig, error) {
 	// Layer 1: bundled default (required)
 	defaultPath := bundledDefaultPath()
 	if err := loadTOML(defaultPath, cfg); err != nil {
-		return nil, fmt.Errorf("default config: %w", err)
+		if err := loadBuiltInDefault(cfg); err != nil {
+			return nil, fmt.Errorf("default config: %w", err)
+		}
 	}
 
 	// Layer 2: user override (optional)
@@ -145,6 +147,54 @@ func loadTOML(path string, cfg *AppConfig) error {
 	_, err = toml.Decode(string(data), cfg)
 	return err
 }
+
+func loadBuiltInDefault(cfg *AppConfig) error {
+	_, err := toml.Decode(builtInDefaultTOML, cfg)
+	return err
+}
+
+const builtInDefaultTOML = `
+[app]
+name = "liaotao"
+version = "0.3.0"
+mode = "debug"
+language = "fr"
+
+[config]
+schema_version = 1
+enable_layered_merge = true
+strict_mode = false
+
+[path_manager]
+allowed_roots = ["$HOME/Downloads", "$HOME/.config/liaotao"]
+temp_dir = "$HOME/.config/liaotao/.tmp"
+logs_dir = "$HOME/.config/liaotao/logs"
+reports_dir = "$HOME/.config/liaotao/reports"
+collision_strategy = "increment"
+normalize_unicode = false
+trim_whitespace = true
+
+[database]
+path = "$HOME/.config/liaotao/data/liaotao.db"
+busy_timeout_ms = 5000
+journal_mode = "WAL"
+foreign_keys = true
+
+[logger]
+level = "debug"
+console_pretty = true
+file_json = true
+rotation_enabled = true
+max_file_mb = 20
+max_files = 5
+include_context_ids = true
+
+[reporting]
+enabled = true
+json_report = true
+csv_report = true
+include_failed = true
+`
 
 func bundledDefaultPath() string {
 	// Try next to executable first (production)
