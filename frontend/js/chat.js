@@ -10,6 +10,7 @@ import { bridge }        from "./bridge.js";
 import { renderMarkdown, applyEnhancers } from "./markdown.js";
 import { getActiveProvider, rememberLastUsedModel } from "./providers.js";
 import { t }             from "./i18n.js";
+import { runHookPipeline } from "./plugins.js";
 
 // ── Utilities (chat-scoped) ────────────────────────────────────────────────
 export function activeConversation() {
@@ -141,6 +142,19 @@ export function stopStreaming(reason) {
     const last = conv.messages[conv.messages.length - 1];
     if (last.role === "assistant") {
       last.thinking = false;
+      if (reason === "done" && !last.afterReceiveProcessed && (last.content || "").trim()) {
+        last.afterReceiveProcessed = true;
+        void runHookPipeline("afterReceive", {
+          conversationId: conv.id,
+          content: last.content,
+          message: last,
+        }).then((result) => {
+          if (result && typeof result.content === "string" && result.content !== last.content) {
+            last.content = result.content;
+            renderMessages();
+          }
+        });
+      }
     }
   }
   els.stop.style.display = "none";
@@ -189,10 +203,27 @@ export async function sendPrompt() {
   const text = els.prompt.value.trim();
   if (!conv || !text || appState.isStreaming) return;
 
+  const beforeSend = await runHookPipeline("beforeSend", {
+    conversationId: conv.id,
+    prompt: text,
+    providerId: Number(conv.providerId) || 0,
+    model: conv.model || "",
+  });
+
+  if (beforeSend && beforeSend.cancel === true) {
+    els.status.textContent = "cancelled by plugin";
+    return;
+  }
+
+  const promptText = beforeSend && typeof beforeSend.prompt === "string"
+    ? beforeSend.prompt.trim()
+    : text;
+  if (!promptText) return;
+
   const activeProv = getActiveProvider();
   const prov = activeProv || appState.providers.find((p) => p.id === conv.providerId) || null;
   appState.isStreaming = true;
-  appState.lastUserPrompt = text;
+  appState.lastUserPrompt = promptText;
   conv.model        = appState.activeProviderId === 0 && typeof els.chatModel.value === "string" && els.chatModel.value.includes("::")
     ? (els.chatModel.value.split("::")[1] || "")
     : els.chatModel.value;
@@ -200,9 +231,9 @@ export async function sendPrompt() {
   rememberLastUsedModel(conv.providerId, conv.providerName, conv.model);
   conv.messages.push({
     role: "user",
-    content: text,
+    content: promptText,
     tokenStats: {
-      tokens_in: Math.max(1, Math.floor(text.trim().length / 4)),
+      tokens_in: Math.max(1, Math.floor(promptText.trim().length / 4)),
       estimated: true,
     },
   });
@@ -216,14 +247,14 @@ export async function sendPrompt() {
   await bridge.callService("SaveMessage", {
     conversation_id: conv.id,
     role:    "user",
-    content: text,
+    content: promptText,
   });
 
   const sendResult = await bridge.callService("SendMessage", {
     conversation_id: String(conv.id),
     provider_id:     Number(conv.providerId) > 0 ? Number(conv.providerId) : (prov ? prov.id : 0),
     model:           conv.model,
-    prompt:          text,
+    prompt:          promptText,
     stream:          true,
     temperature:     resolveTemperatureForSend(conv, prov),
     max_tokens:      Math.max(0, Number(conv.maxTokens) || 0),

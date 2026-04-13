@@ -25,6 +25,7 @@ import { loadMCPServers, initMCPFormListeners } from "./mcp.js";
 import { loadGeneralSettings, saveGeneralSettings, exportSettingsTOML, importSettingsTOML, loadAboutInfo } from "./settings.js";
 import { initI18n, setLanguage, applyTranslations } from "./i18n.js";
 import { initializeUpdatesUI, checkForUpdates } from "./updates.js";
+import { initializePluginSystem } from "./plugins.js";
 
 // ── Settings navigation ────────────────────────────────────────────────────
 function switchSettingsSection(sectionId) {
@@ -360,6 +361,7 @@ function bindEvents() {
 async function init() {
   // Expose message actions to onclick attributes in rendered HTML.
   window.liaotao = { copyMessage, editMessage, regenerateMessage, deleteMessage };
+  initializePluginSystem();
 
   initSidebarResizer();
   applySidebarState();
