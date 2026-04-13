@@ -113,12 +113,15 @@
   },
   "updates": {
     "banner_text": "Une nouvelle version est disponible",
-    "banner_action": "Voir la release",
+    "banner_action": "Télécharger et installer",
     "banner_close_title": "Ignorer",
     "check_for_updates": "Vérifier les mises à jour",
     "checking": "Vérification des mises à jour…",
     "up_to_date": "Vous êtes à jour",
     "auto_check_label": "Vérification automatique des mises à jour",
-    "auto_check_desc": "Vérifier les nouvelles versions au démarrage"
+    "auto_check_desc": "Vérifier les nouvelles versions au démarrage",
+    "downloading": "Téléchargement…",
+    "install_success": "✓ Installation réussie",
+    "install_failed": "✗ Échec de l'installation"
   }
 }

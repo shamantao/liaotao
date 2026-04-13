@@ -113,12 +113,15 @@
   },
   "updates": {
     "banner_text": "有新版本可用",
-    "banner_action": "查看發布",
+    "banner_action": "下載并安裝",
     "banner_close_title": "關閉",
     "check_for_updates": "檢查更新",
     "checking": "檢查更新中…",
     "up_to_date": "您已是最新版本",
-    "auto_check_label": "自動検查更新",
-    "auto_check_desc": "在啟動時検查新版本"
+    "auto_check_label": "自動檢查更新",
+    "auto_check_desc": "在啟動時檢查新版本",
+    "downloading": "下載中…",
+    "install_success": "✓ 安裝成功",
+    "install_failed": "✗ 安裝失敗"
   }
 }

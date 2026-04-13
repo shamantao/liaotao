@@ -113,12 +113,15 @@
   },
   "updates": {
     "banner_text": "A new version is available",
-    "banner_action": "View Release",
+    "banner_action": "Download & Install",
     "banner_close_title": "Dismiss",
     "check_for_updates": "Check for updates",
     "checking": "Checking for updates…",
     "up_to_date": "You're up to date",
     "auto_check_label": "Auto-check for updates",
-    "auto_check_desc": "Check for new versions on startup"
+    "auto_check_desc": "Check for new versions on startup",
+    "downloading": "Downloading…",
+    "install_success": "✓ Installation successful",
+    "install_failed": "✗ Installation failed"
   }
 }
