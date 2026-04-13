@@ -68,3 +68,40 @@ jobs:
           name: liaotao-${{ matrix.label }}
           path: build/artifacts/*
           if-no-files-found: warn
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: List artifacts
+        run: find dist/ -type f | sort
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "liaotao ${{ github.ref_name }}"
+          body: |
+            ## liaotao ${{ github.ref_name }}
+
+            Cross-platform release built by GitHub Actions.
+
+            | Platform | Artifact |
+            |---|---|
+            | macOS Intel | `liaotao-*-darwin-x86_64.zip` |
+            | macOS Apple Silicon | `liaotao-*-darwin-arm64.zip` |
+            | macOS Universal | `liaotao-*-darwin-universal.zip` |
+            | Linux x64 | `liaotao-*-linux-x86_64.tar.gz` |
+            | Windows x64 | `liaotao-*-windows-x86_64.zip` or `.exe` |
+
+            See [CHANGELOG](https://github.com/shamantao/liaotao/blob/main/docs/CHANGELOG.md) for details.
+          files: dist/**/*
+          fail_on_unmatched_files: false
