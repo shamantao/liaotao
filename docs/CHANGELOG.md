@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## [0.3.1] - 2026-04-13
+
+### Fixed
+- Windows portable startup no longer fails when `config/default.toml` is missing next to `liaotao.exe`.
+- Config loader now falls back to built-in defaults and continues normal initialization.
+
+### Tests
+- Added regression test for missing default config fallback in `internal/config/config_test.go`.
+
 ## [0.3.0] - 2026-04-13
 
 ### Added
