@@ -29,14 +29,11 @@ export APP__APP__VERSION="$VERSION"
 build_once() {
   local target="$1"
   echo "[INFO] Running wails3 build (${target})"
+  # Wails v3 uses config-driven builds and does not expose -clean / -platform flags.
   if [[ "$OS_NAME" == "darwin" && "$BUILD_UNIVERSAL" == "1" ]]; then
-    if wails3 build -platform darwin/universal -clean; then
-      echo "[OK] Universal macOS build produced"
-      return
-    fi
-    echo "[WARN] Universal build flag unsupported, falling back to native build"
+    echo "[WARN] Universal override requested, but current Wails v3 CLI is config-driven; running native build"
   fi
-  wails3 build -clean
+  wails3 build
 }
 
 collect_native_outputs() {

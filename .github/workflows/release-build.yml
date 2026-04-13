@@ -5,6 +5,7 @@ name: build-and-release
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  WAILS_VERSION: "v3.0.0-alpha.74"
 
 on:
   push:
@@ -38,13 +39,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-13
-            label: macos-intel
           - os: macos-14
             label: macos-apple-silicon
-          - os: macos-14
-            label: macos-universal
-            universal: "1"
           - os: ubuntu-22.04
             label: linux-x64
           - os: windows-2022
@@ -68,12 +64,10 @@ jobs:
 
       - name: Install Wails CLI
         shell: bash
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${WAILS_VERSION}
 
       - name: Build artifacts
         shell: bash
-        env:
-          BUILD_UNIVERSAL: ${{ matrix.universal || '0' }}
         run: bash ci/build-release.sh
 
       - name: Upload artifacts
@@ -110,9 +104,7 @@ jobs:
 
             | Platform | Artifact |
             |---|---|
-            | macOS Intel | `liaotao-*-darwin-x86_64.zip` |
             | macOS Apple Silicon | `liaotao-*-darwin-arm64.zip` |
-            | macOS Universal | `liaotao-*-darwin-universal.zip` |
             | Linux x64 | `liaotao-*-linux-x86_64.tar.gz` |
             | Windows x64 | `liaotao-*-windows-x86_64.zip` or `.exe` |
 
