@@ -109,9 +109,19 @@ func migrate(ctx context.Context, db *sql.DB) error {
 
 	// Phase B: idempotent baseline schema (no-op when tables already exist).
 	statements := []string{
+		`CREATE TABLE IF NOT EXISTS projects (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL UNIQUE,
+			description TEXT NOT NULL DEFAULT '',
+			archived INTEGER NOT NULL DEFAULT 0,
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+		);`,
+		`INSERT OR IGNORE INTO projects (id, name, description, archived) VALUES (1, 'Unsorted', 'Default project', 0);`,
 		`CREATE TABLE IF NOT EXISTS conversations (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			title TEXT NOT NULL,
+			project_id INTEGER NOT NULL DEFAULT 1 REFERENCES projects(id) ON DELETE RESTRICT,
 			provider_id INTEGER REFERENCES providers(id) ON DELETE SET NULL,
 			model TEXT NOT NULL,
 			temperature REAL NOT NULL DEFAULT 0.7,
@@ -132,6 +142,7 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at DESC);`,
+		`CREATE INDEX IF NOT EXISTS idx_conversations_project_id ON conversations(project_id);`,
 		`CREATE TABLE IF NOT EXISTS providers (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name TEXT NOT NULL UNIQUE,
@@ -197,6 +208,9 @@ func migrate(ctx context.Context, db *sql.DB) error {
 	if err := ensureConversationPreferenceColumns(ctx, db); err != nil {
 		return err
 	}
+	if err := ensureConversationProjectColumn(ctx, db); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -244,6 +258,50 @@ func ensureConversationPreferenceColumns(ctx context.Context, db *sql.DB) error 
 		if _, err := db.ExecContext(ctx, `ALTER TABLE conversations ADD COLUMN system_prompt TEXT NOT NULL DEFAULT ''`); err != nil {
 			return fmt.Errorf("add conversations.system_prompt: %w", err)
 		}
+	}
+
+	return nil
+}
+
+func ensureConversationProjectColumn(ctx context.Context, db *sql.DB) error {
+	rows, err := db.QueryContext(ctx, `PRAGMA table_info(conversations)`)
+	if err != nil {
+		return fmt.Errorf("pragma table_info conversations: %w", err)
+	}
+	defer rows.Close()
+
+	hasProjectID := false
+	for rows.Next() {
+		var cid, notnull, pk int
+		var name, typ string
+		var dflt sql.NullString
+		if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
+			return err
+		}
+		if name == "project_id" {
+			hasProjectID = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	if _, err := db.ExecContext(ctx, `INSERT OR IGNORE INTO projects (id, name, description, archived) VALUES (1, 'Unsorted', 'Default project', 0)`); err != nil {
+		return fmt.Errorf("ensure default project: %w", err)
+	}
+
+	if !hasProjectID {
+		if _, err := db.ExecContext(ctx, `ALTER TABLE conversations ADD COLUMN project_id INTEGER NOT NULL DEFAULT 1`); err != nil {
+			return fmt.Errorf("add conversations.project_id: %w", err)
+		}
+	}
+
+	if _, err := db.ExecContext(ctx, `UPDATE conversations SET project_id = 1 WHERE project_id IS NULL OR project_id <= 0`); err != nil {
+		return fmt.Errorf("backfill conversations.project_id: %w", err)
+	}
+
+	if _, err := db.ExecContext(ctx, `CREATE INDEX IF NOT EXISTS idx_conversations_project_id ON conversations(project_id)`); err != nil {
+		return fmt.Errorf("create idx_conversations_project_id: %w", err)
 	}
 
 	return nil
@@ -300,6 +358,7 @@ func migrateConversationsProviderID(ctx context.Context, db *sql.DB) error {
 		`CREATE TABLE conversations_v2 (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			title TEXT NOT NULL,
+			project_id INTEGER NOT NULL DEFAULT 1,
 			provider_id INTEGER REFERENCES providers(id) ON DELETE SET NULL,
 			model TEXT NOT NULL,
 			temperature REAL NOT NULL DEFAULT 0.7,
@@ -309,8 +368,9 @@ func migrateConversationsProviderID(ctx context.Context, db *sql.DB) error {
 			updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 		);`,
 		// 2. Copy rows: resolve stored text (name OR cast id) to numeric FK.
-		`INSERT INTO conversations_v2 (id, title, provider_id, model, created_at, updated_at)
+		`INSERT INTO conversations_v2 (id, title, project_id, provider_id, model, created_at, updated_at)
 		 SELECT c.id, c.title,
+		        1,
 		        COALESCE(
 				    (SELECT p.id FROM providers p WHERE CAST(p.id AS TEXT) = c.provider_id LIMIT 1),
 				    (SELECT p.id FROM providers p WHERE p.name = c.provider_id LIMIT 1)

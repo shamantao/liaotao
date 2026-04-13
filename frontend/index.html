@@ -47,6 +47,13 @@
               <h3 data-i18n="sidebar.conversations">Conversations</h3>
               <button class="icon-btn" id="sidebar-toggle" title="Expand or collapse sidebar">☰</button>
             </div>
+            <div class="project-row">
+              <label for="project-filter" class="sr-only" data-i18n="sidebar.projects">Projects</label>
+              <select id="project-filter" class="project-filter" aria-label="Project filter"></select>
+              <button class="icon-btn" id="new-project-btn" data-i18n-title="sidebar.new_project" title="New project" aria-label="New project">＋</button>
+              <button class="icon-btn" id="rename-project-btn" data-i18n-title="sidebar.rename_project" title="Rename project" aria-label="Rename project">✎</button>
+              <button class="icon-btn" id="archive-project-btn" data-i18n-title="sidebar.archive_project" title="Archive project" aria-label="Archive project">🗂</button>
+            </div>
             <button class="new-chat icon-only-btn" id="new-chat-btn" data-i18n-title="sidebar.new_chat" title="New chat" aria-label="New chat"><span class="new-chat-icon" aria-hidden="true">✚</span></button>
             <input id="conversation-search" class="conversation-search" type="search" data-i18n-placeholder="sidebar.search_placeholder" placeholder="Search conversations" aria-label="Search conversations">
             <div class="conversation-list" id="conversation-list"></div>
@@ -315,6 +322,7 @@
           <!-- ── Plugins ─────────────────────────────────── -->
           <div class="settings-section" id="section-plugins">
             <h3 data-i18n="settings.plugins">Plugins</h3>
+            <p class="plugin-help" data-i18n="plugins.help_intro">A plugin can intercept messages or tool output. Enable only what you need for your workflow.</p>
             <div class="field-group">
               <label data-i18n="plugins.installed">Installed plugins</label>
               <div class="test-connection-row">
@@ -325,6 +333,7 @@
 
             <div class="field-group">
               <label data-i18n="plugins.prompt_library">Prompt library</label>
+              <p class="plugin-help" data-i18n="plugins.help_prompt_library">Default templates: summarize = concise 5-bullet summary, translate_fr = translate latest answer to French. Use /tpl &lt;name&gt; in chat.</p>
               <div class="field-group">
                 <input id="plugins-prompt-name" placeholder="template_name">
                 <textarea id="plugins-prompt-content" rows="2" placeholder="Prompt template content"></textarea>

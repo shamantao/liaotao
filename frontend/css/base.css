@@ -244,6 +244,35 @@ body {
   white-space: nowrap;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.project-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.project-filter {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.12);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+}
+
 .icon-btn {
   border: 1px solid var(--border);
   background: rgba(0, 0, 0, 0.15);
@@ -368,6 +397,7 @@ body {
 
 /* ── Sidebar collapsed state ───────────────────────────────────────── */
 .app-shell.sidebar-collapsed .sidebar h3,
+.app-shell.sidebar-collapsed .project-row,
 .app-shell.sidebar-collapsed .conversation-item .label,
 .app-shell.sidebar-collapsed .conversation-search,
 .app-shell.sidebar-collapsed .conversation-main,

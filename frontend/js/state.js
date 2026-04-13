@@ -16,6 +16,8 @@ export const appState = {
   expandedSidebarWidth: 290,
   conversationSearchQuery: "",
   providers:           [],     // ProviderRecord[] cached from DB
+  projects:            [],     // ProjectRecord[] cached from DB
+  activeProjectId:     0,      // 0 = all projects filter
   activeProviderId:    null,   // number | null — currently selected provider
   providerStatus:      {},     // providerId -> "connected" | "disconnected" | "unknown"
   lastUsedModels:      [],     // [{ providerId, providerName, model, usedAt }]
@@ -41,6 +43,10 @@ export const els = {
   status:         document.getElementById("status"),
   // chat
   conversationList: document.getElementById("conversation-list"),
+  projectFilter: document.getElementById("project-filter"),
+  newProjectBtn: document.getElementById("new-project-btn"),
+  renameProjectBtn: document.getElementById("rename-project-btn"),
+  archiveProjectBtn: document.getElementById("archive-project-btn"),
   messages:       document.getElementById("messages"),
   prompt:         document.getElementById("prompt"),
   send:           document.getElementById("send-btn"),

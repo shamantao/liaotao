@@ -11,6 +11,8 @@ import { renderMessages, loadConversationMessages } from "./chat.js";
 import { t }                       from "./i18n.js";
 import { emitHook }                from "./plugins.js";
 
+const defaultProjectName = "Unsorted";
+
 function escapeHTML(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -125,14 +127,46 @@ function inlineConfirm(btn, onConfirm) {
   }, 3000));
 }
 
+function activeProject() {
+  if (appState.activeProjectId <= 0) return null;
+  return appState.projects.find((p) => p.id === appState.activeProjectId) || null;
+}
+
+function renderProjectFilter() {
+  if (!els.projectFilter) return;
+  const options = [`<option value="0">${escapeHTML(t("sidebar.all_projects"))}</option>`]
+    .concat(appState.projects.map((project) => `<option value="${project.id}">${escapeHTML(project.name)}</option>`));
+  els.projectFilter.innerHTML = options.join("");
+  els.projectFilter.value = String(appState.activeProjectId || 0);
+}
+
+export async function loadProjects() {
+  const result = await bridge.callService("ListProjects", { include_archived: false });
+  appState.projects = Array.isArray(result)
+    ? result.map((item) => ({
+      id: Number(item.id) || 0,
+      name: String(item.name || ""),
+      description: String(item.description || ""),
+      archived: Boolean(item.archived),
+    })).filter((item) => item.id > 0)
+    : [];
+
+  if (appState.activeProjectId > 0 && !appState.projects.find((p) => p.id === appState.activeProjectId)) {
+    appState.activeProjectId = 0;
+  }
+  renderProjectFilter();
+}
+
 async function fetchConversationSummaries(limit = 100) {
+  const projectID = Number(appState.activeProjectId) || 0;
   if (appState.conversationSearchQuery) {
     return bridge.callService("SearchConversations", {
       query: appState.conversationSearchQuery,
       limit,
+      project_id: projectID,
     });
   }
-  return bridge.callService("ListConversations", { limit });
+  return bridge.callService("ListConversations", { limit, project_id: projectID });
 }
 
 async function activateConversation(conv) {
@@ -161,6 +195,8 @@ function mapConversationSummary(item) {
   return {
     id: item.id,
     title: localizeConversationTitle(item.title, item.id),
+    projectId: Number(item.project_id) || 1,
+    projectName: String(item.project || defaultProjectName),
     providerName: item.provider || "",
     providerId: item.provider_id || 0,
     model: item.model || els.chatModel.value,
@@ -406,6 +442,7 @@ export async function newConversation() {
     : getActiveProvider();
   const created = await bridge.callService("CreateConversation", {
     title:       t("sidebar.new_chat"),
+    project_id:  Number(appState.activeProjectId) || 0,
     provider_id: prov ? prov.id : 0,
     model:       selectedModel,
   });
@@ -416,6 +453,8 @@ export async function newConversation() {
   const conv = {
     id:           created.id,
     title:        localizeConversationTitle(created.title, appState.conversations.length + 1),
+    projectId:    Number(created.project_id) || 1,
+    projectName:  String(created.project || defaultProjectName),
     providerName: prov ? prov.name : "",
     providerId:   prov ? prov.id : 0,
     model:        created.model || selectedModel,
@@ -431,4 +470,55 @@ export async function newConversation() {
   renderConversationList();
   renderMessages();
   els.prompt.focus();
+}
+
+export function bindProjectControls() {
+  if (els.projectFilter) {
+    els.projectFilter.addEventListener("change", async () => {
+      appState.activeProjectId = Number(els.projectFilter.value) || 0;
+      await loadPersistedConversations();
+    });
+  }
+
+  if (els.newProjectBtn) {
+    els.newProjectBtn.addEventListener("click", async () => {
+      const name = window.prompt(t("sidebar.new_project"));
+      if (!name || !name.trim()) {
+        els.status.textContent = t("sidebar.project_name_required");
+        return;
+      }
+      await bridge.callService("CreateProject", { name: name.trim(), description: "" });
+      await loadProjects();
+      els.status.textContent = t("sidebar.project_created");
+    });
+  }
+
+  if (els.renameProjectBtn) {
+    els.renameProjectBtn.addEventListener("click", async () => {
+      const project = activeProject();
+      if (!project) return;
+      const name = window.prompt(t("sidebar.rename_project"), project.name);
+      if (!name || !name.trim()) {
+        els.status.textContent = t("sidebar.project_name_required");
+        return;
+      }
+      await bridge.callService("RenameProject", { project_id: project.id, name: name.trim() });
+      await loadProjects();
+      els.status.textContent = t("sidebar.project_renamed");
+    });
+  }
+
+  if (els.archiveProjectBtn) {
+    els.archiveProjectBtn.addEventListener("click", async () => {
+      const project = activeProject();
+      if (!project) return;
+      const ok = window.confirm(t("sidebar.archive_project_confirm", { name: project.name }));
+      if (!ok) return;
+      await bridge.callService("ArchiveProject", { project_id: project.id, archived: true });
+      appState.activeProjectId = 0;
+      await loadProjects();
+      await loadPersistedConversations();
+      els.status.textContent = t("sidebar.project_archived");
+    });
+  }
 }

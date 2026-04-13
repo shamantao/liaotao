@@ -49,6 +49,8 @@ func (s *Service) Health(ctx context.Context) (map[string]any, error) {
 type ConversationSummary struct {
 	ID           int64   `json:"id"`
 	Title        string  `json:"title"`
+	ProjectID    int64   `json:"project_id"`
+	Project      string  `json:"project"`
 	ProviderID   int64   `json:"provider_id"` // numeric FK; 0 = no provider
 	Provider     string  `json:"provider"`    // resolved display name
 	Model        string  `json:"model"`
@@ -61,19 +63,22 @@ type ConversationSummary struct {
 // CreateConversationPayload is the frontend request payload to create a conversation.
 type CreateConversationPayload struct {
 	Title      string `json:"title"`
+	ProjectID  int64  `json:"project_id"`
 	ProviderID int64  `json:"provider_id"` // numeric ID from providers table; 0 = no provider
 	Model      string `json:"model"`
 }
 
 // ListConversationsPayload controls paging for conversation listing.
 type ListConversationsPayload struct {
-	Limit int `json:"limit"`
+	Limit     int   `json:"limit"`
+	ProjectID int64 `json:"project_id"`
 }
 
 // SearchConversationsPayload controls title/content search for conversations.
 type SearchConversationsPayload struct {
-	Query string `json:"query"`
-	Limit int    `json:"limit"`
+	Query     string `json:"query"`
+	Limit     int    `json:"limit"`
+	ProjectID int64  `json:"project_id"`
 }
 
 // RenameConversationPayload renames one conversation.
@@ -126,13 +131,22 @@ func (s *Service) CreateConversation(ctx context.Context, payload CreateConversa
 		model = "gpt-4o-mini"
 	}
 	defaultSystemPrompt := s.getSettingValue(ctx, "default_system_prompt", "")
+	projectID := payload.ProjectID
+	if projectID <= 0 {
+		var err error
+		projectID, err = s.getDefaultProjectID(ctx)
+		if err != nil {
+			return ConversationSummary{}, err
+		}
+	}
 
 	// NULLIF(provider_id, 0) stores NULL when no provider is selected.
 	res, err := s.db.ExecContext(
 		ctx,
-		`INSERT INTO conversations (title, provider_id, model, temperature, max_tokens, system_prompt)
-		 VALUES (?, NULLIF(?, 0), ?, 0.7, 0, ?)`,
+		`INSERT INTO conversations (title, project_id, provider_id, model, temperature, max_tokens, system_prompt)
+		 VALUES (?, ?, NULLIF(?, 0), ?, 0.7, 0, ?)`,
 		title,
+		projectID,
 		payload.ProviderID,
 		model,
 		defaultSystemPrompt,
@@ -148,13 +162,14 @@ func (s *Service) CreateConversation(ctx context.Context, payload CreateConversa
 	item := ConversationSummary{}
 	err = s.db.QueryRowContext(
 		ctx,
-		`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
+		`SELECT c.id, c.title, COALESCE(c.project_id, 1), COALESCE(pr.name, ''), COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
 		        COALESCE(c.temperature, 0.7), COALESCE(c.max_tokens, 0), COALESCE(c.system_prompt, ''), c.updated_at
 		 FROM conversations c
+		 LEFT JOIN projects pr ON pr.id = c.project_id
 		 LEFT JOIN providers p ON p.id = c.provider_id
 		 WHERE c.id = ?`,
 		id,
-	).Scan(&item.ID, &item.Title, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt)
+	).Scan(&item.ID, &item.Title, &item.ProjectID, &item.Project, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt)
 	if err != nil {
 		return ConversationSummary{}, err
 	}
@@ -165,15 +180,15 @@ func (s *Service) CreateConversation(ctx context.Context, payload CreateConversa
 // ListConversations returns conversations ordered by latest activity.
 
 func (s *Service) ListConversations(ctx context.Context, payload ListConversationsPayload) ([]ConversationSummary, error) {
-	return s.listConversationsWithQuery(ctx, "", payload.Limit)
+	return s.listConversationsWithQuery(ctx, "", payload.Limit, payload.ProjectID)
 }
 
 // SearchConversations returns conversations matching title or message content.
 func (s *Service) SearchConversations(ctx context.Context, payload SearchConversationsPayload) ([]ConversationSummary, error) {
-	return s.listConversationsWithQuery(ctx, payload.Query, payload.Limit)
+	return s.listConversationsWithQuery(ctx, payload.Query, payload.Limit, payload.ProjectID)
 }
 
-func (s *Service) listConversationsWithQuery(ctx context.Context, query string, limit int) ([]ConversationSummary, error) {
+func (s *Service) listConversationsWithQuery(ctx context.Context, query string, limit int, projectID int64) ([]ConversationSummary, error) {
 	if limit <= 0 {
 		limit = 50
 	}
@@ -186,30 +201,39 @@ func (s *Service) listConversationsWithQuery(ctx context.Context, query string, 
 	if trimmed == "" {
 		rows, err = s.db.QueryContext(
 			ctx,
-			`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
+			`SELECT c.id, c.title, COALESCE(c.project_id, 1), COALESCE(pr.name, ''), COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
 			        COALESCE(c.temperature, 0.7), COALESCE(c.max_tokens, 0), COALESCE(c.system_prompt, ''), c.updated_at
 			 FROM conversations c
+			 LEFT JOIN projects pr ON pr.id = c.project_id
 			 LEFT JOIN providers p ON p.id = c.provider_id
+			 WHERE (? <= 0 OR c.project_id = ?)
 			 ORDER BY c.updated_at DESC
 			 LIMIT ?`,
+			projectID,
+			projectID,
 			limit,
 		)
 	} else {
 		needle := "%" + strings.ToLower(trimmed) + "%"
 		rows, err = s.db.QueryContext(
 			ctx,
-			`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
+			`SELECT c.id, c.title, COALESCE(c.project_id, 1), COALESCE(pr.name, ''), COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
 			        COALESCE(c.temperature, 0.7), COALESCE(c.max_tokens, 0), COALESCE(c.system_prompt, ''), c.updated_at
 			 FROM conversations c
+			 LEFT JOIN projects pr ON pr.id = c.project_id
 			 LEFT JOIN providers p ON p.id = c.provider_id
-			 WHERE LOWER(c.title) LIKE ?
+			 WHERE (? <= 0 OR c.project_id = ?)
+			   AND (
+			       LOWER(c.title) LIKE ?
 			    OR EXISTS (
 			      SELECT 1 FROM messages m
 			      WHERE m.conversation_id = c.id
 			        AND LOWER(m.content) LIKE ?
-			    )
+			    ))
 			 ORDER BY c.updated_at DESC
 			 LIMIT ?`,
+			projectID,
+			projectID,
 			needle,
 			needle,
 			limit,
@@ -223,7 +247,7 @@ func (s *Service) listConversationsWithQuery(ctx context.Context, query string, 
 	items := make([]ConversationSummary, 0, limit)
 	for rows.Next() {
 		var item ConversationSummary
-		if err := rows.Scan(&item.ID, &item.Title, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.Title, &item.ProjectID, &item.Project, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
@@ -264,13 +288,14 @@ func (s *Service) RenameConversation(ctx context.Context, payload RenameConversa
 	item := ConversationSummary{}
 	err = s.db.QueryRowContext(
 		ctx,
-		`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
+		`SELECT c.id, c.title, COALESCE(c.project_id, 1), COALESCE(pr.name, ''), COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
 		        COALESCE(c.temperature, 0.7), COALESCE(c.max_tokens, 0), COALESCE(c.system_prompt, ''), c.updated_at
 		 FROM conversations c
+		 LEFT JOIN projects pr ON pr.id = c.project_id
 		 LEFT JOIN providers p ON p.id = c.provider_id
 		 WHERE c.id = ?`,
 		payload.ConversationID,
-	).Scan(&item.ID, &item.Title, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt)
+	).Scan(&item.ID, &item.Title, &item.ProjectID, &item.Project, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt)
 	if err != nil {
 		return ConversationSummary{}, err
 	}
@@ -332,13 +357,14 @@ func (s *Service) UpdateConversationSettings(ctx context.Context, payload Update
 	item := ConversationSummary{}
 	err = s.db.QueryRowContext(
 		ctx,
-		`SELECT c.id, c.title, COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
+		`SELECT c.id, c.title, COALESCE(c.project_id, 1), COALESCE(pr.name, ''), COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
 		        COALESCE(c.temperature, 0.7), COALESCE(c.max_tokens, 0), COALESCE(c.system_prompt, ''), c.updated_at
 		 FROM conversations c
+		 LEFT JOIN projects pr ON pr.id = c.project_id
 		 LEFT JOIN providers p ON p.id = c.provider_id
 		 WHERE c.id = ?`,
 		payload.ConversationID,
-	).Scan(&item.ID, &item.Title, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt)
+	).Scan(&item.ID, &item.Title, &item.ProjectID, &item.Project, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt)
 	if err != nil {
 		return ConversationSummary{}, err
 	}

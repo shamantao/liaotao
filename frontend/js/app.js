@@ -20,7 +20,10 @@ import {
   copyMessage, editMessage, regenerateMessage, deleteMessage,
   attachResponseMeta, appendToolCall, updateToolResult,
 } from "./chat.js";
-import { newConversation, loadPersistedConversations, saveActiveConversationSettings, searchConversations, renderConversationList } from "./conversations.js";
+import {
+  newConversation, loadPersistedConversations, saveActiveConversationSettings,
+  searchConversations, renderConversationList, loadProjects, bindProjectControls,
+} from "./conversations.js";
 import { loadMCPServers, initMCPFormListeners } from "./mcp.js";
 import { loadGeneralSettings, saveGeneralSettings, exportSettingsTOML, importSettingsTOML, loadAboutInfo } from "./settings.js";
 import { initI18n, setLanguage, applyTranslations } from "./i18n.js";
@@ -377,6 +380,7 @@ async function init() {
   await initI18n(appState.settings.language || "en");
   applyTranslations();
   bindEvents();
+  bindProjectControls();
   bindPluginManagerEvents();
   initMCPFormListeners();
   registerBuiltInPlugins();
@@ -384,6 +388,7 @@ async function init() {
   await loadPluginManager();
   initializeUpdatesUI();
   await loadProviders();
+  await loadProjects();
   await loadProviderProfiles();
   await loadPersistedConversations();
   renderLastUsedModels();
