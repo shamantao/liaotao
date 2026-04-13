@@ -64,7 +64,17 @@ package_portable() {
   if [[ "$OS_NAME" == mingw* || "$OS_NAME" == msys* || "$OS_NAME" == cygwin* || "$OS_NAME" == "windows_nt" ]]; then
     local exe_path="$BIN_DIR/liaotao.exe"
     if [[ -f "$exe_path" ]]; then
-      powershell -NoProfile -Command "Compress-Archive -Force -Path '$exe_path' -DestinationPath '$ARTIFACT_DIR/${base}.zip'"
+      # Convert bash paths to Windows format for PowerShell
+      local win_exe_path win_artifact_path
+      if command -v cygpath >/dev/null 2>&1; then
+        win_exe_path=$(cygpath -w "$exe_path")
+        win_artifact_path=$(cygpath -w "$ARTIFACT_DIR/${base}.zip")
+      else
+        # Fallback if cygpath not available: just use the paths as-is
+        win_exe_path="$exe_path"
+        win_artifact_path="$ARTIFACT_DIR/${base}.zip"
+      fi
+      powershell -NoProfile -Command "Compress-Archive -Force -Path '$win_exe_path' -DestinationPath '$win_artifact_path'"
       echo "[OK] Packaged: $ARTIFACT_DIR/${base}.zip"
       return
     fi
