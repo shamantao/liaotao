@@ -29,6 +29,7 @@ export const appState = {
     expertMode: false,
     responseStyle: "balanced",
     chatFontSize: "L",
+    autoCheckUpdates: true,    // UPD-02: auto-check for updates on startup
   },
 };
 
@@ -66,6 +67,7 @@ export const els = {
   theme:    document.getElementById("theme"),
   defaultSystemPrompt: document.getElementById("default-system-prompt"),
   expertMode: document.getElementById("expert-mode"),
+  autoCheckUpdates: document.getElementById("auto-check-updates"),
   exportConfigBtn: document.getElementById("export-config-btn"),
   importConfigInput: document.getElementById("import-config-input"),
   aboutContent: document.getElementById("about-content"),
@@ -140,6 +142,7 @@ export function applySettingsToUI() {
   if (els.showMetaFooter) els.showMetaFooter.checked = appState.settings.showMetaFooter !== false;
   if (els.defaultSystemPrompt) els.defaultSystemPrompt.value = appState.settings.defaultSystemPrompt || "";
   if (els.expertMode) els.expertMode.checked = Boolean(appState.settings.expertMode);
+  if (els.autoCheckUpdates) els.autoCheckUpdates.checked = appState.settings.autoCheckUpdates !== false;
   if (els.chatResponseStyle) els.chatResponseStyle.value = appState.settings.responseStyle || "balanced";
   if (els.chatFontSize) els.chatFontSize.value = appState.settings.chatFontSize || "L";
   const [fontSize, iconSize] = FONT_SIZE_MAP[appState.settings.chatFontSize] ?? FONT_SIZE_MAP["L"];

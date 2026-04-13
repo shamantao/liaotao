@@ -278,6 +278,13 @@ function bindEvents() {
       await saveGeneralSettings();
     });
   }
+  if (els.autoCheckUpdates) {
+    els.autoCheckUpdates.addEventListener("change", async () => {
+      appState.settings.autoCheckUpdates = els.autoCheckUpdates.checked;
+      persistSettingsToStorage();
+      await saveGeneralSettings();
+    });
+  }
   if (els.exportConfigBtn) {
     els.exportConfigBtn.addEventListener("click", () => {
       exportSettingsTOML();

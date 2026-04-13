@@ -117,6 +117,8 @@
     "banner_close_title": "Dismiss",
     "check_for_updates": "Check for updates",
     "checking": "Checking for updates…",
-    "up_to_date": "You're up to date"
+    "up_to_date": "You're up to date",
+    "auto_check_label": "Auto-check for updates",
+    "auto_check_desc": "Check for new versions on startup"
   }
 }

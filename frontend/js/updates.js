@@ -44,8 +44,15 @@ export function initializeUpdatesUI() {
 /**
  * Check for updates asynchronously.
  * Calls go binding CheckForUpdate(), compares versions, displays banner if needed.
+ * Respects appState.settings.autoCheckUpdates flag.
  */
 export async function checkForUpdates() {
+  // Honor autoCheckUpdates setting (can be disabled in Settings > General)
+  if (!appState.settings.autoCheckUpdates) {
+    console.debug("Auto-check updates disabled in settings");
+    return;
+  }
+
   try {
     // Call Go binding via Wails bridge
     const result = await bridge.callService("CheckForUpdate");

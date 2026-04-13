@@ -117,6 +117,8 @@
     "banner_close_title": "關閉",
     "check_for_updates": "檢查更新",
     "checking": "檢查更新中…",
-    "up_to_date": "您已是最新版本"
+    "up_to_date": "您已是最新版本",
+    "auto_check_label": "自動検查更新",
+    "auto_check_desc": "在啟動時検查新版本"
   }
 }
