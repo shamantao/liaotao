@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -259,6 +260,17 @@ func (s *Service) DownloadAndInstallUpdate(ctx context.Context) (DownloadInstall
 		}, nil
 	}
 
+	// Validate checksum if checksums are provided in release notes (UPD-04)
+	expectedChecksums := extractChecksumsFromReleaseBody(updateResult.LatestRelease.Body)
+	if err := validateBinaryChecksum(binPath, expectedChecksums); err != nil {
+		// Checksum failed - remove the downloaded binary and return error
+		_ = os.Remove(binPath)
+		return DownloadInstallResult{
+			Error:       fmt.Sprintf("checksum validation failed: %v", err),
+			InstalledAt: time.Now(),
+		}, nil
+	}
+
 	return DownloadInstallResult{
 		Success:     true,
 		Version:     updateResult.LatestVersion,
@@ -472,5 +484,79 @@ func extractTarGzBinary(src io.Reader, destPath string) error {
 			return nil
 		}
 	}
+}
+
+// extractChecksumsFromReleaseBody parses release notes to extract SHA256 checksums.
+// Expected format: "filename: sha256hex" where sha256hex is 64 hex characters.
+// Returns a map of filename -> checksum pairs.
+func extractChecksumsFromReleaseBody(body string) map[string]string {
+	checksums := make(map[string]string)
+	lines := strings.Split(body, "\n")
+	for _, line := range lines {
+		if !strings.Contains(line, ":") {
+			continue
+		}
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		filename := strings.TrimSpace(parts[0])
+		checksum := strings.TrimSpace(parts[1])
+		// Validate checksum format: 64 hex characters
+		if len(checksum) == 64 && isHexString(checksum) {
+			checksums[filename] = checksum
+		}
+	}
+	return checksums
+}
+
+// isHexString checks if a string contains only hexadecimal characters.
+func isHexString(s string) bool {
+	for _, c := range s {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
+}
+
+// computeFileChecksum returns the SHA256 checksum of the given file as a hex string.
+func computeFileChecksum(filePath string) (string, error) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return "", fmt.Errorf("open file: %w", err)
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", fmt.Errorf("compute checksum: %w", err)
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
+}
+
+// validateBinaryChecksum compares the file checksum against expected values from release notes.
+// If no checksum is found in release notes, validation is skipped (not an error).
+// Returns an error if checksums don't match.
+func validateBinaryChecksum(filePath string, expectedChecksums map[string]string) error {
+	filename := filepath.Base(filePath)
+	expectedChecksum, exists := expectedChecksums[filename]
+	
+	// If no expected checksum was provided in release notes, skip validation
+	if !exists {
+		return nil
+	}
+
+	calculatedSum, err := computeFileChecksum(filePath)
+	if err != nil {
+		return fmt.Errorf("checksum computation: %w", err)
+	}
+
+	if !strings.EqualFold(calculatedSum, expectedChecksum) {
+		return fmt.Errorf("checksum mismatch for %s: expected %s, got %s", filename, expectedChecksum, calculatedSum)
+	}
+
+	return nil
 }
 

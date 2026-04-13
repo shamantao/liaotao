@@ -122,6 +122,7 @@
     "auto_check_desc": "Vérifier les nouvelles versions au démarrage",
     "downloading": "Téléchargement…",
     "install_success": "✓ Installation réussie",
-    "install_failed": "✗ Échec de l'installation"
+    "install_failed": "✗ Échec de l'installation",
+    "checksum_error": "✗ Vérification du téléchargement échouée"
   }
 }

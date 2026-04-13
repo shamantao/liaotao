@@ -483,3 +483,24 @@
   .danger-btn:hover {
     background: rgba(204, 107, 100, 0.12);
   }
+
+  /* ── Check updates button ────────────────────────────────────────── */
+  .check-updates-btn {
+    border: 1px solid var(--primary, #3b82f6);
+    background: transparent;
+    color: var(--primary, #3b82f6);
+    border-radius: 6px;
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+  }
+
+  .check-updates-btn:hover {
+    background: rgba(59, 130, 246, 0.1);
+  }
+
+  .check-updates-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }

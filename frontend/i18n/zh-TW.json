@@ -122,6 +122,7 @@
     "auto_check_desc": "在啟動時檢查新版本",
     "downloading": "下載中…",
     "install_success": "✓ 安裝成功",
-    "install_failed": "✗ 安裝失敗"
+    "install_failed": "✗ 安裝失敗",
+    "checksum_error": "✗ 下載驗證失敗"
   }
 }

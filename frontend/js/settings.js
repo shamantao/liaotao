@@ -7,6 +7,7 @@
 import { appState, els, persistSettingsToStorage, applySettingsToUI } from "./state.js";
 import { bridge } from "./bridge.js";
 import { t } from "./i18n.js";
+import { checkForUpdatesManual } from "./updates.js";
 
 function escapeHTML(value) {
   return String(value || "")
@@ -132,7 +133,10 @@ export async function loadAboutInfo() {
     .join("");
 
   els.aboutContent.innerHTML = `
-    <p><strong>${escapeHTML(info.name || "liaotao")}</strong> v${escapeHTML(info.version || "dev")}</p>
+    <p>
+      <strong>${escapeHTML(info.name || "liaotao")}</strong> v${escapeHTML(info.version || "dev")}
+      <button id="check-updates-btn" class="check-updates-btn" data-i18n="updates.check_for_updates" style="margin-left: 12px;">Check for updates</button>
+    </p>
     <p>${escapeHTML(info.description || "")}</p>
     <h4>Links</h4>
     <ul>${links}</ul>
@@ -141,4 +145,19 @@ export async function loadAboutInfo() {
     <h4>${t("settings.keyboard_shortcuts")}</h4>
     <table class="shortcuts-table"><tbody>${shortcutRows}</tbody></table>
   `;
+
+  // Wire up the check-for-updates button
+  const checkUpdatesBtn = document.getElementById("check-updates-btn");
+  if (checkUpdatesBtn) {
+    checkUpdatesBtn.addEventListener("click", async () => {
+      checkUpdatesBtn.disabled = true;
+      checkUpdatesBtn.textContent = t("updates.checking");
+      try {
+        await checkForUpdatesManual();
+      } finally {
+        checkUpdatesBtn.disabled = false;
+        checkUpdatesBtn.textContent = t("updates.check_for_updates");
+      }
+    });
+  }
 }

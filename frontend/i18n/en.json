@@ -122,6 +122,7 @@
     "auto_check_desc": "Check for new versions on startup",
     "downloading": "Downloading…",
     "install_success": "✓ Installation successful",
-    "install_failed": "✗ Installation failed"
+    "install_failed": "✗ Installation failed",
+    "checksum_error": "✗ Download verification failed"
   }
 }
