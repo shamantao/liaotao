@@ -24,6 +24,7 @@ import { newConversation, loadPersistedConversations, saveActiveConversationSett
 import { loadMCPServers, initMCPFormListeners } from "./mcp.js";
 import { loadGeneralSettings, saveGeneralSettings, exportSettingsTOML, importSettingsTOML, loadAboutInfo } from "./settings.js";
 import { initI18n, setLanguage, applyTranslations } from "./i18n.js";
+import { initializeUpdatesUI, checkForUpdates } from "./updates.js";
 
 // ── Settings navigation ────────────────────────────────────────────────────
 function switchSettingsSection(sectionId) {
@@ -363,11 +364,14 @@ async function init() {
   applyTranslations();
   bindEvents();
   initMCPFormListeners();
+  initializeUpdatesUI();
   await loadProviders();
   await loadProviderProfiles();
   await loadPersistedConversations();
   renderLastUsedModels();
   await loadAboutInfo();
+  // Check for updates on startup (non-blocking)
+  checkForUpdates();
 }
 
 init();

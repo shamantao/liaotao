@@ -110,5 +110,13 @@
     "en": "English",
     "fr": "Français",
     "zh-TW": "繁體中文"
+  },
+  "updates": {
+    "banner_text": "有新版本可用",
+    "banner_action": "查看發布",
+    "banner_close_title": "關閉",
+    "check_for_updates": "檢查更新",
+    "checking": "檢查更新中…",
+    "up_to_date": "您已是最新版本"
   }
 }

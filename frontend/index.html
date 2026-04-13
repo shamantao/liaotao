@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="./css/base.css">
   <link rel="stylesheet" href="./css/chat.css">
   <link rel="stylesheet" href="./css/settings.css">
+  <link rel="stylesheet" href="./css/updates.css">
   <link rel="stylesheet" href="./prism/prism.css">
   <link rel="stylesheet" href="./katex/katex.min.css">
 </head>
@@ -25,6 +26,18 @@
       </nav>
       <div class="status" id="status" data-i18n="nav.status_ready">ready</div>
     </header>
+
+    <!-- UPD-02: Update notification banner -->
+    <div class="update-banner" id="update-banner" hidden>
+      <div class="update-banner-inner">
+        <div class="update-banner-content">
+          <span class="update-banner-icon">↻</span>
+          <span class="update-banner-text" data-i18n="updates.banner_text">A new version is available</span>
+          <button class="update-banner-link" id="update-banner-action" data-i18n="updates.banner_action">View Release</button>
+        </div>
+        <button class="update-banner-close" id="update-banner-close" data-i18n-title="updates.banner_close_title" title="Dismiss">✕</button>
+      </div>
+    </div>
 
     <section id="chat" class="tab-panel active">
       <div class="chat-layout">

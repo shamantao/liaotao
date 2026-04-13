@@ -110,5 +110,13 @@
     "en": "English",
     "fr": "Français",
     "zh-TW": "繁體中文"
+  },
+  "updates": {
+    "banner_text": "Une nouvelle version est disponible",
+    "banner_action": "Voir la release",
+    "banner_close_title": "Ignorer",
+    "check_for_updates": "Vérifier les mises à jour",
+    "checking": "Vérification des mises à jour…",
+    "up_to_date": "Vous êtes à jour"
   }
 }
