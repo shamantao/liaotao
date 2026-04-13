@@ -5,7 +5,6 @@ name: build-and-release
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-  WAILS_VERSION: "v3.0.0-alpha.74"
 
 on:
   push:
@@ -61,10 +60,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config
-
-      - name: Install Wails CLI
-        shell: bash
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${WAILS_VERSION}
 
       - name: Build artifacts
         shell: bash
