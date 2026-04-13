@@ -9,6 +9,7 @@ import { bridge }                  from "./bridge.js";
 import { getActiveProvider, syncChatModelSelector } from "./providers.js";
 import { renderMessages, loadConversationMessages } from "./chat.js";
 import { t }                       from "./i18n.js";
+import { emitHook }                from "./plugins.js";
 
 function escapeHTML(value) {
   return String(value)
@@ -196,6 +197,11 @@ export async function saveActiveConversationSettings() {
     conv.maxTokens = Number(updated.max_tokens) > 0 ? Number(updated.max_tokens) : 0;
     conv.systemPrompt = updated.system_prompt || "";
     conv.updatedAt = updated.updated_at || conv.updatedAt;
+    await emitHook("onSaveConv", {
+      conversationId: conv.id,
+      providerId: conv.providerId,
+      model: conv.model,
+    });
     renderConversationList();
   }
 }

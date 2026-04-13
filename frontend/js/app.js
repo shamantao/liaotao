@@ -25,7 +25,9 @@ import { loadMCPServers, initMCPFormListeners } from "./mcp.js";
 import { loadGeneralSettings, saveGeneralSettings, exportSettingsTOML, importSettingsTOML, loadAboutInfo } from "./settings.js";
 import { initI18n, setLanguage, applyTranslations } from "./i18n.js";
 import { initializeUpdatesUI, checkForUpdates } from "./updates.js";
-import { initializePluginSystem } from "./plugins.js";
+import { initializePluginSystem, loadPluginsFromDirectory } from "./plugins.js";
+import { registerBuiltInPlugins } from "./plugins_builtin.js";
+import { bindPluginManagerEvents, loadPluginManager } from "./plugins_manager.js";
 
 // ── Settings navigation ────────────────────────────────────────────────────
 function switchSettingsSection(sectionId) {
@@ -42,6 +44,9 @@ function switchSettingsSection(sectionId) {
   }
   if (sectionId === "about") {
     loadAboutInfo();
+  }
+  if (sectionId === "plugins") {
+    loadPluginManager();
   }
 }
 
@@ -372,7 +377,11 @@ async function init() {
   await initI18n(appState.settings.language || "en");
   applyTranslations();
   bindEvents();
+  bindPluginManagerEvents();
   initMCPFormListeners();
+  registerBuiltInPlugins();
+  await loadPluginsFromDirectory();
+  await loadPluginManager();
   initializeUpdatesUI();
   await loadProviders();
   await loadProviderProfiles();

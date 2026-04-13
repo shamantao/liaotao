@@ -108,6 +108,7 @@
           <button class="settings-nav-btn active" data-section="general" data-i18n="settings.general">General</button>
           <button class="settings-nav-btn" data-section="providers" data-i18n="settings.providers">Providers</button>
           <button class="settings-nav-btn" data-section="mcp" data-i18n="settings.mcp">MCP Servers</button>
+          <button class="settings-nav-btn" data-section="plugins" data-i18n="settings.plugins">Plugins</button>
           <button class="settings-nav-btn" data-section="about" data-i18n="settings.about">About</button>
         </nav>
         <div class="settings-content">
@@ -307,6 +308,40 @@
                   </div>
                   <p id="msf-status" class="form-status-msg"></p>
                 </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Plugins ─────────────────────────────────── -->
+          <div class="settings-section" id="section-plugins">
+            <h3 data-i18n="settings.plugins">Plugins</h3>
+            <div class="field-group">
+              <label data-i18n="plugins.installed">Installed plugins</label>
+              <div class="test-connection-row">
+                <button type="button" class="action-btn" id="plugins-reload-btn" data-i18n="plugins.reload">Reload plugins</button>
+              </div>
+              <div id="plugins-list" class="plugins-list"></div>
+            </div>
+
+            <div class="field-group">
+              <label data-i18n="plugins.prompt_library">Prompt library</label>
+              <div class="field-group">
+                <input id="plugins-prompt-name" placeholder="template_name">
+                <textarea id="plugins-prompt-content" rows="2" placeholder="Prompt template content"></textarea>
+              </div>
+              <div class="test-connection-row">
+                <select id="plugins-prompt-list"></select>
+                <button type="button" class="action-btn" id="plugins-prompt-insert-btn" data-i18n="plugins.insert">Insert</button>
+                <button type="button" class="action-btn" id="plugins-prompt-save-btn" data-i18n="plugins.save">Save</button>
+                <button type="button" class="danger-btn" id="plugins-prompt-delete-btn" data-i18n="plugins.delete">Delete</button>
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label data-i18n="plugins.export">Conversation export</label>
+              <div class="test-connection-row">
+                <button type="button" class="action-btn" id="plugins-export-md-btn" data-i18n="plugins.export_md">Export Markdown</button>
+                <button type="button" class="action-btn" id="plugins-export-pdf-btn" data-i18n="plugins.export_pdf">Export PDF</button>
               </div>
             </div>
           </div>

@@ -317,7 +317,16 @@ export function updateToolResult(toolCallId, content) {
     tc.id = toolCallId;
     tc.status = "done";
     tc.result = content;
-    renderMessages();
+    void runHookPipeline("renderTool", {
+      toolCallId,
+      name: tc.name,
+      content: tc.result,
+    }).then((result) => {
+      if (result && typeof result.content === "string") {
+        tc.result = result.content;
+      }
+      renderMessages();
+    });
   }
 }
 

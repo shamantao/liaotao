@@ -48,6 +48,7 @@
     "general": "General",
     "providers": "Providers",
     "mcp": "MCP Servers",
+    "plugins": "Plugins",
     "about": "About",
     "language": "Language",
     "theme": "Theme",
@@ -105,6 +106,20 @@
     "transport_http": "HTTP (Streamable HTTP / MCP 1.0) — URL: http://host/mcp",
     "transport_sse": "SSE (legacy FastMCP / aitao) — URL: http://host:port",
     "transport_stdio": "stdio (spawn process)"
+  },
+  "plugins": {
+    "installed": "Installed plugins",
+    "reload": "Reload plugins",
+    "none": "No plugins loaded.",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "prompt_library": "Prompt library",
+    "insert": "Insert",
+    "save": "Save",
+    "delete": "Delete",
+    "export": "Conversation export",
+    "export_md": "Export Markdown",
+    "export_pdf": "Export PDF"
   },
   "lang": {
     "en": "English",

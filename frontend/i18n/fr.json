@@ -49,6 +49,7 @@
     "providers": "Fournisseurs",
     "mcp": "Serveurs MCP",
     "about": "À propos",
+    "plugins": "Plugins",
     "language": "Langue",
     "theme": "Thème",
     "theme_dark": "Sombre",
@@ -67,6 +68,20 @@
     "shortcut_focus": "Aller au champ de saisie",
     "shortcut_sidebar": "Afficher/masquer la barre latérale",
     "shortcut_stop": "Arrêter la génération / fermer les Paramètres"
+  },
+  "plugins": {
+    "installed": "Plugins installés",
+    "reload": "Recharger les plugins",
+    "none": "Aucun plugin chargé.",
+    "enabled": "Activé",
+    "disabled": "Désactivé",
+    "prompt_library": "Bibliothèque de prompts",
+    "insert": "Insérer",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "export": "Export de conversation",
+    "export_md": "Exporter en Markdown",
+    "export_pdf": "Exporter en PDF"
   },
   "providers": {
     "title": "Fournisseurs",

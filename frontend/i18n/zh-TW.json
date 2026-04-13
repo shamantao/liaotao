@@ -49,6 +49,7 @@
     "providers": "服務商",
     "mcp": "MCP 伺服器",
     "about": "關於",
+    "plugins": "外掛",
     "language": "語言",
     "theme": "主題",
     "theme_dark": "深色",
@@ -67,6 +68,20 @@
     "shortcut_focus": "聚焦輸入框",
     "shortcut_sidebar": "切換側邊欄",
     "shortcut_stop": "停止生成 / 關閉設定"
+  },
+  "plugins": {
+    "installed": "已安裝外掛",
+    "reload": "重新載入外掛",
+    "none": "尚未載入任何外掛。",
+    "enabled": "啟用",
+    "disabled": "停用",
+    "prompt_library": "提示詞庫",
+    "insert": "插入",
+    "save": "儲存",
+    "delete": "刪除",
+    "export": "對話匯出",
+    "export_md": "匯出 Markdown",
+    "export_pdf": "匯出 PDF"
   },
   "providers": {
     "title": "服務商",

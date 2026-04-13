@@ -71,6 +71,17 @@ export const els = {
   exportConfigBtn: document.getElementById("export-config-btn"),
   importConfigInput: document.getElementById("import-config-input"),
   aboutContent: document.getElementById("about-content"),
+  // settings - plugins
+  pluginsReloadBtn: document.getElementById("plugins-reload-btn"),
+  pluginsList: document.getElementById("plugins-list"),
+  pluginsPromptName: document.getElementById("plugins-prompt-name"),
+  pluginsPromptContent: document.getElementById("plugins-prompt-content"),
+  pluginsPromptList: document.getElementById("plugins-prompt-list"),
+  pluginsPromptInsertBtn: document.getElementById("plugins-prompt-insert-btn"),
+  pluginsPromptSaveBtn: document.getElementById("plugins-prompt-save-btn"),
+  pluginsPromptDeleteBtn: document.getElementById("plugins-prompt-delete-btn"),
+  pluginsExportMdBtn: document.getElementById("plugins-export-md-btn"),
+  pluginsExportPdfBtn: document.getElementById("plugins-export-pdf-btn"),
   // settings – providers CRUD
   providersList:           document.getElementById("providers-list"),
   newProviderBtn:          document.getElementById("new-provider-btn"),
