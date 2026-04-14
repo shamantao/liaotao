@@ -262,6 +262,59 @@ body {
   gap: 0.35rem;
 }
 
+.project-dashboard {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.45rem;
+  background: rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.project-dashboard-title {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.project-dashboard-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.project-dashboard-row label {
+  font-size: 0.74rem;
+  color: var(--text-dim);
+}
+
+.project-retrieval-backend {
+  flex: 1;
+  border: 1px solid var(--border);
+  background: rgba(18, 32, 51, 0.9);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.8rem;
+}
+
+.project-dashboard-stats {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  line-height: 1.35;
+}
+
+.retrieval-status-indexing {
+  color: #f4b266;
+}
+
+.retrieval-status-ready {
+  color: var(--ok);
+}
+
 .project-filter {
   min-width: 0;
   flex: 1;
@@ -317,6 +370,74 @@ body {
   overflow-y: auto;
   min-height: 0;
   padding-right: 4px;
+}
+
+.sidebar-attachments {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.45rem;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.sidebar-attachments-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-height: 145px;
+  overflow-y: auto;
+}
+
+.attachment-item {
+  border: 1px solid rgba(62, 142, 126, 0.22);
+  border-radius: 8px;
+  padding: 0.35rem 0.45rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  background: rgba(30, 61, 89, 0.18);
+}
+
+.attachment-name {
+  font-size: 0.8rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attachment-meta {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+}
+
+.attachment-share-btn {
+  margin-top: 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(18, 32, 51, 0.9);
+  color: var(--text-dim);
+  font-size: 0.67rem;
+  padding: 0.18rem 0.28rem;
+  cursor: pointer;
+}
+
+.attachment-share-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.attachment-empty {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.75rem;
 }
 
 .conversation-item {

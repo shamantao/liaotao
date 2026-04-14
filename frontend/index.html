@@ -54,8 +54,23 @@
               <button class="icon-btn" id="rename-project-btn" data-i18n-title="sidebar.rename_project" title="Rename project" aria-label="Rename project">✎</button>
               <button class="icon-btn" id="archive-project-btn" data-i18n-title="sidebar.archive_project" title="Archive project" aria-label="Archive project">🗂</button>
             </div>
+            <section class="project-dashboard" id="project-dashboard">
+              <h4 class="project-dashboard-title" data-i18n="sidebar.project_dashboard">Project dashboard</h4>
+              <div class="project-dashboard-row">
+                <label for="project-retrieval-backend" data-i18n="sidebar.retrieval_backend">Retrieval</label>
+                <select id="project-retrieval-backend" class="project-retrieval-backend">
+                  <option value="local" data-i18n="sidebar.retrieval_backend_local">Local</option>
+                  <option value="external" data-i18n="sidebar.retrieval_backend_external">External</option>
+                </select>
+              </div>
+              <div class="project-dashboard-stats" id="project-dashboard-stats"></div>
+            </section>
             <button class="new-chat icon-only-btn" id="new-chat-btn" data-i18n-title="sidebar.new_chat" title="New chat" aria-label="New chat"><span class="new-chat-icon" aria-hidden="true">✚</span></button>
             <input id="conversation-search" class="conversation-search" type="search" data-i18n-placeholder="sidebar.search_placeholder" placeholder="Search conversations" aria-label="Search conversations">
+            <section class="sidebar-attachments">
+              <h4 class="sidebar-attachments-title" data-i18n="sidebar.attachments">Attachments</h4>
+              <div class="attachment-list" id="attachment-list"></div>
+            </section>
             <div class="conversation-list" id="conversation-list"></div>
           </aside>
           <div class="sidebar-resizer" id="sidebar-resizer" title="Resize sidebar"></div>

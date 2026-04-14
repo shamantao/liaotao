@@ -10,6 +10,7 @@ package bindings
 import (
 	"context"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -17,15 +18,16 @@ import (
 // SendMessagePayload is the frontend request payload for model generation.
 // APIKey, Provider and BaseURL have been intentionally removed — resolved Go-side from DB.
 type SendMessagePayload struct {
-	ConversationID string  `json:"conversation_id"`
-	ProviderID     int64   `json:"provider_id"`
-	Model          string  `json:"model"`
-	Prompt         string  `json:"prompt"`
-	Stream         bool    `json:"stream"`
-	Temperature    float64 `json:"temperature"`
-	MaxTokens      int     `json:"max_tokens"`
-	SystemPrompt   string  `json:"system_prompt"`
-	NumCtx         int     `json:"num_ctx"`
+	ConversationID  string              `json:"conversation_id"`
+	ProviderID      int64               `json:"provider_id"`
+	Model           string              `json:"model"`
+	Prompt          string              `json:"prompt"`
+	Stream          bool                `json:"stream"`
+	Temperature     float64             `json:"temperature"`
+	MaxTokens       int                 `json:"max_tokens"`
+	SystemPrompt    string              `json:"system_prompt"`
+	NumCtx          int                 `json:"num_ctx"`
+	ContextMessages []openAIChatMessage `json:"-"`
 }
 
 // streamMeta carries response metadata emitted via chat:meta after a successful generation.
@@ -88,10 +90,11 @@ func (s *Service) ListModels(ctx context.Context, payload ListModelsPayload) ([]
 // When ProviderID > 0 the request is pinned to that provider (manual override, ROUTER-07).
 // When ProviderID == 0 the Smart Router selects the best provider by priority and quota.
 func (s *Service) SendMessage(_ context.Context, payload SendMessagePayload) (SendMessageResult, error) {
-	prompt := strings.TrimSpace(payload.Prompt)
-	if prompt == "" {
+	userPrompt := strings.TrimSpace(payload.Prompt)
+	if userPrompt == "" {
 		return SendMessageResult{OK: false, Reason: "empty-prompt"}, nil
 	}
+	promptForModel := userPrompt
 
 	// Resolve candidates: manual override when ProviderID > 0, router otherwise.
 	var candidates []routerCandidate
@@ -143,12 +146,22 @@ func (s *Service) SendMessage(_ context.Context, payload SendMessagePayload) (Se
 		convID = "default"
 	}
 
+	if convNumericID, err := strconv.ParseInt(convID, 10, 64); err == nil && convNumericID > 0 {
+		rc, ctxErr := s.buildRequestContext(context.Background(), convNumericID, userPrompt)
+		if ctxErr != nil {
+			slog.Warn("request context build failed", "conversation_id", convNumericID, "err", ctxErr)
+		} else {
+			payload.ContextMessages = requestContextMessagesToOpenAI(rc.RecentMessages)
+			promptForModel = promptWithRequestContext(userPrompt, rc)
+		}
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	s.setCancel(convID, cancel)
 
 	go func() {
 		defer s.clearCancel(convID)
-		meta, err := s.streamWithCandidates(ctx, convID, candidates, payload, model, prompt)
+		meta, err := s.streamWithCandidates(ctx, convID, candidates, payload, model, promptForModel, userPrompt)
 		if err != nil {
 			s.emitStructuredError(convID, err)
 			s.emit("chat:done", map[string]any{"conversation_id": convID, "done": true})
@@ -191,7 +204,7 @@ func (s *Service) CancelGeneration(_ context.Context, payload CancelPayload) (ma
 // In multi-candidate mode (Automat) all providers are tried before giving up.
 // Token usage is tracked for the provider that successfully serves the request (ROUTER-03).
 // Returns streamMeta with provider/model/token info for the ROUTER-08 metadata footer.
-func (s *Service) streamWithCandidates(ctx context.Context, convID string, candidates []routerCandidate, payload SendMessagePayload, model, prompt string) (streamMeta, error) {
+func (s *Service) streamWithCandidates(ctx context.Context, convID string, candidates []routerCandidate, payload SendMessagePayload, model, promptForModel, userPrompt string) (streamMeta, error) {
 	var lastErr error
 	for _, c := range candidates {
 		startedAt := time.Now()
@@ -204,10 +217,10 @@ func (s *Service) streamWithCandidates(ctx context.Context, convID string, candi
 		// All provider types go through the OpenAI-compat tool-call loop.
 		// Ollama exposes /v1/chat/completions (OpenAI-compat) and supports tool_calls.
 		// streamOpenAIWithToolsRetry already falls back to streamOllama if the /v1 call fails.
-		err = s.streamOpenAIWithToolsRetry(ctx, convID, c.Cfg, payload, resolvedModel, prompt)
+		err = s.streamOpenAIWithToolsRetry(ctx, convID, c.Cfg, payload, resolvedModel, promptForModel)
 		if err == nil {
 			// Estimate input tokens (1 token ≈ 4 chars) and record usage (ROUTER-03).
-			tokenEstimate := estimateTokenCount(prompt)
+			tokenEstimate := estimateTokenCount(userPrompt)
 			_ = s.incrementTokenUsage(context.Background(), c.ProviderID, tokenEstimate)
 			remaining := s.getTokensRemaining(context.Background(), c.ProviderID, c.DailyLimit, c.MonthlyLimit)
 			durationMS := time.Since(startedAt).Milliseconds()

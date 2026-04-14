@@ -101,3 +101,43 @@ func TestConversation_ProjectFilter(t *testing.T) {
 		t.Fatalf("project filter B mismatch: %+v", itemsB)
 	}
 }
+
+func TestProject_DashboardAndRetrievalBackend(t *testing.T) {
+	ctx := context.Background()
+	database := newConversationTestDB(t)
+	svc := NewService(database)
+	t.Setenv("LIAOTAO_ATTACHMENTS_DIR", t.TempDir())
+
+	project, err := svc.CreateProject(ctx, CreateProjectPayload{Name: "Dashboard"})
+	if err != nil {
+		t.Fatalf("CreateProject: %v", err)
+	}
+	conv, err := svc.CreateConversation(ctx, CreateConversationPayload{Title: "Dash chat", ProjectID: project.ID, Model: "gpt-4o-mini"})
+	if err != nil {
+		t.Fatalf("CreateConversation: %v", err)
+	}
+	if err := svc.SaveMessage(ctx, MessagePayload{ConversationID: conv.ID, Role: "user", Content: "token sample for dashboard"}); err != nil {
+		t.Fatalf("SaveMessage: %v", err)
+	}
+
+	if _, err := svc.SetProjectRetrievalBackend(ctx, SetProjectRetrievalBackendPayload{ProjectID: project.ID, Backend: "external"}); err != nil {
+		t.Fatalf("SetProjectRetrievalBackend: %v", err)
+	}
+
+	dashboard, err := svc.GetProjectDashboard(ctx, ProjectDashboardPayload{ProjectID: project.ID})
+	if err != nil {
+		t.Fatalf("GetProjectDashboard: %v", err)
+	}
+	if dashboard.ProjectID != project.ID {
+		t.Fatalf("dashboard project mismatch: %+v", dashboard)
+	}
+	if dashboard.ConversationCount != 1 {
+		t.Fatalf("expected 1 conversation, got %d", dashboard.ConversationCount)
+	}
+	if dashboard.TotalTokens <= 0 {
+		t.Fatalf("expected total_tokens > 0, got %d", dashboard.TotalTokens)
+	}
+	if dashboard.RetrievalBackend != "external" {
+		t.Fatalf("expected retrieval backend external, got %q", dashboard.RetrievalBackend)
+	}
+}

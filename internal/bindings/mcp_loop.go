@@ -54,6 +54,9 @@ func (s *Service) streamOpenAIWithTools(ctx context.Context, convID string, cfg 
 	if payload.SystemPrompt != "" {
 		messages = append(messages, openAIChatMessage{Role: "system", Content: payload.SystemPrompt})
 	}
+	if len(payload.ContextMessages) > 0 {
+		messages = append(messages, payload.ContextMessages...)
+	}
 	messages = append(messages, openAIChatMessage{Role: "user", Content: prompt})
 
 	for iteration := 0; iteration < maxToolLoopIterations; iteration++ {

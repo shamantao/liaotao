@@ -513,7 +513,14 @@ func (s *Service) SaveMessage(ctx context.Context, payload MessagePayload) error
 		return err
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	// ConversationMemory is best-effort and must not block chat persistence.
+	_ = s.upsertConversationMemory(ctx, payload.ConversationID)
+
+	return nil
 }
 
 // DeleteMessage removes one persisted message and refreshes the parent conversation timestamp.
@@ -559,6 +566,8 @@ func (s *Service) DeleteMessage(ctx context.Context, payload DeleteMessagePayloa
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
+
+	_ = s.upsertConversationMemory(ctx, payload.ConversationID)
 
 	return map[string]any{"ok": true}, nil
 }

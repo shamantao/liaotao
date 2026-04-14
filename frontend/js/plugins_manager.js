@@ -7,7 +7,6 @@
 import { els } from "./state.js";
 import { t } from "./i18n.js";
 import {
-  emitHook,
   listPlugins,
   loadPluginsFromDirectory,
   setPluginEnabled,
@@ -108,18 +107,6 @@ export function bindPluginManagerEvents() {
       await loadPluginsFromDirectory();
       renderPluginsList();
     });
-  }
-
-  if (els.prompt) {
-    els.prompt.addEventListener("drop", async (event) => {
-      event.preventDefault();
-      const files = event.dataTransfer && event.dataTransfer.files ? [...event.dataTransfer.files] : [];
-      if (!files.length) return;
-      for (const file of files) {
-        await emitHook("onFileUpload", { name: file.name, size: file.size, type: file.type || "" });
-      }
-    });
-    els.prompt.addEventListener("dragover", (event) => event.preventDefault());
   }
 
   bindPromptLibraryControls();

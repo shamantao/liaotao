@@ -7,6 +7,7 @@
 // ── App state ──────────────────────────────────────────────────────────────
 export const appState = {
   conversations:       [],
+  activeAttachments:   [],
   activeConversationId: null,
   streamingTimer:      null,
   isStreaming:         false,
@@ -18,6 +19,7 @@ export const appState = {
   providers:           [],     // ProviderRecord[] cached from DB
   projects:            [],     // ProjectRecord[] cached from DB
   activeProjectId:     0,      // 0 = all projects filter
+  activeProjectDashboard: null,
   activeProviderId:    null,   // number | null — currently selected provider
   providerStatus:      {},     // providerId -> "connected" | "disconnected" | "unknown"
   lastUsedModels:      [],     // [{ providerId, providerName, model, usedAt }]
@@ -44,6 +46,9 @@ export const els = {
   // chat
   conversationList: document.getElementById("conversation-list"),
   projectFilter: document.getElementById("project-filter"),
+  projectDashboard: document.getElementById("project-dashboard"),
+  projectDashboardStats: document.getElementById("project-dashboard-stats"),
+  projectRetrievalBackend: document.getElementById("project-retrieval-backend"),
   newProjectBtn: document.getElementById("new-project-btn"),
   renameProjectBtn: document.getElementById("rename-project-btn"),
   archiveProjectBtn: document.getElementById("archive-project-btn"),
@@ -53,6 +58,7 @@ export const els = {
   stop:           document.getElementById("stop-btn"),
   newChat:        document.getElementById("new-chat-btn"),
   conversationSearch: document.getElementById("conversation-search"),
+  attachmentList: document.getElementById("attachment-list"),
   chatProvider:   document.getElementById("chat-provider"),
   chatModelFilter: document.getElementById("chat-model-filter"),
   chatModel:      document.getElementById("chat-model"),

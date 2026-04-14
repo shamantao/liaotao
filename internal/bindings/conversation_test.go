@@ -24,6 +24,7 @@ func newConversationTestDB(t *testing.T) *sql.DB {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
+	database.SetMaxOpenConns(1)
 	t.Cleanup(func() { _ = database.Close() })
 	if err := db.ApplySchemaForTest(database); err != nil {
 		t.Fatalf("apply schema: %v", err)

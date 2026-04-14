@@ -10,6 +10,7 @@ import { getActiveProvider, syncChatModelSelector } from "./providers.js";
 import { renderMessages, loadConversationMessages } from "./chat.js";
 import { t }                       from "./i18n.js";
 import { emitHook }                from "./plugins.js";
+import { loadActiveConversationAttachments } from "./attachments.js";
 
 const defaultProjectName = "Unsorted";
 
@@ -140,6 +141,55 @@ function renderProjectFilter() {
   els.projectFilter.value = String(appState.activeProjectId || 0);
 }
 
+function renderProjectDashboard() {
+  if (!els.projectDashboard || !els.projectDashboardStats || !els.projectRetrievalBackend) return;
+  if (appState.activeProjectId <= 0 || !appState.activeProjectDashboard) {
+    els.projectDashboardStats.innerHTML = `<span>${escapeHTML(t("sidebar.project_dashboard_empty"))}</span>`;
+    els.projectRetrievalBackend.value = "local";
+    els.projectRetrievalBackend.disabled = true;
+    return;
+  }
+
+  const dashboard = appState.activeProjectDashboard;
+  els.projectRetrievalBackend.disabled = false;
+  els.projectRetrievalBackend.value = dashboard.retrievalBackend || "local";
+  const statusClass = dashboard.retrievalStatus === "indexing"
+    ? "retrieval-status-indexing"
+    : "retrieval-status-ready";
+  const statusLabel = dashboard.retrievalStatus === "indexing"
+    ? t("sidebar.retrieval_status_indexing")
+    : t("sidebar.retrieval_status_ready");
+
+  els.projectDashboardStats.innerHTML = [
+    `${escapeHTML(t("sidebar.dashboard_conversations", { count: String(dashboard.conversationCount || 0) }))}`,
+    `${escapeHTML(t("sidebar.dashboard_tokens", { count: String(dashboard.totalTokens || 0) }))}`,
+    `${escapeHTML(t("sidebar.dashboard_files", { count: String(dashboard.fileCount || 0) }))}`,
+    `${escapeHTML(t("sidebar.dashboard_project_knowledge", { count: String(dashboard.projectKnowledgeCount || 0) }))}`,
+    `<span class="${statusClass}">${escapeHTML(t("sidebar.dashboard_retrieval_status", { status: statusLabel }))}</span>`,
+  ].join("<br>");
+}
+
+export async function refreshProjectDashboard() {
+  if (appState.activeProjectId <= 0) {
+    appState.activeProjectDashboard = null;
+    renderProjectDashboard();
+    return;
+  }
+  const dashboard = await bridge.callService("GetProjectDashboard", {
+    project_id: Number(appState.activeProjectId),
+  });
+  appState.activeProjectDashboard = {
+    projectID: Number(dashboard.project_id) || 0,
+    conversationCount: Number(dashboard.conversation_count) || 0,
+    totalTokens: Number(dashboard.total_tokens) || 0,
+    fileCount: Number(dashboard.file_count) || 0,
+    projectKnowledgeCount: Number(dashboard.project_knowledge_count) || 0,
+    retrievalBackend: String(dashboard.retrieval_backend || "local"),
+    retrievalStatus: String(dashboard.retrieval_status || "ready"),
+  };
+  renderProjectDashboard();
+}
+
 export async function loadProjects() {
   const result = await bridge.callService("ListProjects", { include_archived: false });
   appState.projects = Array.isArray(result)
@@ -155,6 +205,7 @@ export async function loadProjects() {
     appState.activeProjectId = 0;
   }
   renderProjectFilter();
+  await refreshProjectDashboard();
 }
 
 async function fetchConversationSummaries(limit = 100) {
@@ -189,6 +240,7 @@ async function activateConversation(conv) {
   syncChatModelSelector(conv.model || "");
   renderConversationList();
   await loadConversationMessages(conv.id);
+  await loadActiveConversationAttachments();
 }
 
 function mapConversationSummary(item) {
@@ -249,6 +301,7 @@ async function reloadConversationList(preferredConversationID = 0) {
     appState.activeConversationId = null;
     renderConversationList();
     renderMessages();
+    await loadActiveConversationAttachments();
     return false;
   }
 
@@ -469,6 +522,7 @@ export async function newConversation() {
   syncChatModelSelector(conv.model || "");
   renderConversationList();
   renderMessages();
+  await loadActiveConversationAttachments();
   els.prompt.focus();
 }
 
@@ -476,9 +530,26 @@ export function bindProjectControls() {
   if (els.projectFilter) {
     els.projectFilter.addEventListener("change", async () => {
       appState.activeProjectId = Number(els.projectFilter.value) || 0;
+      await refreshProjectDashboard();
       await loadPersistedConversations();
     });
   }
+
+  if (els.projectRetrievalBackend) {
+    els.projectRetrievalBackend.addEventListener("change", async () => {
+      if (appState.activeProjectId <= 0) return;
+      await bridge.callService("SetProjectRetrievalBackend", {
+        project_id: Number(appState.activeProjectId),
+        backend: els.projectRetrievalBackend.value || "local",
+      });
+      await refreshProjectDashboard();
+      els.status.textContent = t("sidebar.retrieval_backend_updated");
+    });
+  }
+
+  window.addEventListener("liaotao:project-dashboard-refresh", () => {
+    void refreshProjectDashboard();
+  });
 
   if (els.newProjectBtn) {
     els.newProjectBtn.addEventListener("click", async () => {

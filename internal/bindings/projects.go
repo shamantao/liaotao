@@ -5,6 +5,7 @@ package bindings
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -13,12 +14,36 @@ const defaultProjectName = "Unsorted"
 
 // ProjectRecord is returned to the frontend for project selectors and management.
 type ProjectRecord struct {
-	ID          int64  `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Archived    bool   `json:"archived"`
-	CreatedAt   string `json:"created_at"`
-	UpdatedAt   string `json:"updated_at"`
+	ID                int64  `json:"id"`
+	Name              string `json:"name"`
+	Description       string `json:"description"`
+	Archived          bool   `json:"archived"`
+	RetrievalBackend  string `json:"retrieval_backend"`
+	RetrievalIndexing bool   `json:"retrieval_indexing"`
+	CreatedAt         string `json:"created_at"`
+	UpdatedAt         string `json:"updated_at"`
+}
+
+// SetProjectRetrievalBackendPayload updates retrieval backend strategy for one project.
+type SetProjectRetrievalBackendPayload struct {
+	ProjectID int64  `json:"project_id"`
+	Backend   string `json:"backend"`
+}
+
+// ProjectDashboardPayload scopes project dashboard retrieval.
+type ProjectDashboardPayload struct {
+	ProjectID int64 `json:"project_id"`
+}
+
+// ProjectDashboard summarizes project activity and retrieval status (PROJ-06/KR-06).
+type ProjectDashboard struct {
+	ProjectID             int64  `json:"project_id"`
+	ConversationCount     int64  `json:"conversation_count"`
+	TotalTokens           int64  `json:"total_tokens"`
+	FileCount             int64  `json:"file_count"`
+	ProjectKnowledgeCount int64  `json:"project_knowledge_count"`
+	RetrievalBackend      string `json:"retrieval_backend"`
+	RetrievalStatus       string `json:"retrieval_status"`
 }
 
 // ListProjectsPayload controls project listing behavior.
@@ -46,7 +71,7 @@ type ArchiveProjectPayload struct {
 
 // ListProjects returns projects ordered by default project first, then by name.
 func (s *Service) ListProjects(ctx context.Context, payload ListProjectsPayload) ([]ProjectRecord, error) {
-	query := `SELECT id, name, description, archived, created_at, updated_at
+	query := `SELECT id, name, description, archived, COALESCE(retrieval_backend, 'local'), COALESCE(retrieval_indexing, 0), created_at, updated_at
 		FROM projects`
 	args := make([]any, 0, 1)
 	if !payload.IncludeArchived {
@@ -64,11 +89,12 @@ func (s *Service) ListProjects(ctx context.Context, payload ListProjectsPayload)
 	out := make([]ProjectRecord, 0, 16)
 	for rows.Next() {
 		var rec ProjectRecord
-		var archivedInt int
-		if err := rows.Scan(&rec.ID, &rec.Name, &rec.Description, &archivedInt, &rec.CreatedAt, &rec.UpdatedAt); err != nil {
+		var archivedInt, indexingInt int
+		if err := rows.Scan(&rec.ID, &rec.Name, &rec.Description, &archivedInt, &rec.RetrievalBackend, &indexingInt, &rec.CreatedAt, &rec.UpdatedAt); err != nil {
 			return nil, err
 		}
 		rec.Archived = archivedInt != 0
+		rec.RetrievalIndexing = indexingInt != 0
 		out = append(out, rec)
 	}
 	if err := rows.Err(); err != nil {
@@ -87,7 +113,8 @@ func (s *Service) CreateProject(ctx context.Context, payload CreateProjectPayloa
 
 	res, err := s.db.ExecContext(
 		ctx,
-		`INSERT INTO projects (name, description, archived, updated_at) VALUES (?, ?, 0, datetime('now'))`,
+		`INSERT INTO projects (name, description, archived, retrieval_backend, retrieval_indexing, updated_at)
+		 VALUES (?, ?, 0, 'local', 0, datetime('now'))`,
 		name,
 		desc,
 	)
@@ -187,15 +214,17 @@ func (s *Service) ArchiveProject(ctx context.Context, payload ArchiveProjectPayl
 
 func (s *Service) getProjectByID(ctx context.Context, id int64) (ProjectRecord, error) {
 	var rec ProjectRecord
-	var archivedInt int
+	var archivedInt, indexingInt int
 	err := s.db.QueryRowContext(ctx,
-		`SELECT id, name, description, archived, created_at, updated_at FROM projects WHERE id = ?`,
+		`SELECT id, name, description, archived, COALESCE(retrieval_backend, 'local'), COALESCE(retrieval_indexing, 0), created_at, updated_at
+		 FROM projects WHERE id = ?`,
 		id,
-	).Scan(&rec.ID, &rec.Name, &rec.Description, &archivedInt, &rec.CreatedAt, &rec.UpdatedAt)
+	).Scan(&rec.ID, &rec.Name, &rec.Description, &archivedInt, &rec.RetrievalBackend, &indexingInt, &rec.CreatedAt, &rec.UpdatedAt)
 	if err != nil {
 		return ProjectRecord{}, err
 	}
 	rec.Archived = archivedInt != 0
+	rec.RetrievalIndexing = indexingInt != 0
 	return rec, nil
 }
 
@@ -210,7 +239,8 @@ func (s *Service) getDefaultProjectID(ctx context.Context) (int64, error) {
 	}
 
 	res, createErr := s.db.ExecContext(ctx,
-		`INSERT OR IGNORE INTO projects (id, name, description, archived) VALUES (1, ?, 'Default project', 0)`,
+		`INSERT OR IGNORE INTO projects (id, name, description, archived, retrieval_backend, retrieval_indexing)
+		 VALUES (1, ?, 'Default project', 0, 'local', 0)`,
 		defaultProjectName,
 	)
 	if createErr != nil {
@@ -229,4 +259,96 @@ func (s *Service) getDefaultProjectID(ctx context.Context) (int64, error) {
 		return 0, err
 	}
 	return id, nil
+}
+
+// SetProjectRetrievalBackend persists retrieval backend selection (KR-05).
+func (s *Service) SetProjectRetrievalBackend(ctx context.Context, payload SetProjectRetrievalBackendPayload) (ProjectRecord, error) {
+	if payload.ProjectID <= 0 {
+		return ProjectRecord{}, fmt.Errorf("project_id must be > 0")
+	}
+	backend := strings.ToLower(strings.TrimSpace(payload.Backend))
+	if backend == "" {
+		backend = "local"
+	}
+	if backend != "local" && backend != "external" {
+		return ProjectRecord{}, fmt.Errorf("unsupported retrieval backend: %s", backend)
+	}
+
+	if _, err := s.db.ExecContext(
+		ctx,
+		`UPDATE projects SET retrieval_backend = ?, updated_at = datetime('now') WHERE id = ?`,
+		backend,
+		payload.ProjectID,
+	); err != nil {
+		return ProjectRecord{}, err
+	}
+	return s.getProjectByID(ctx, payload.ProjectID)
+}
+
+// GetProjectDashboard returns project-level counters and retrieval status (PROJ-06/KR-06).
+func (s *Service) GetProjectDashboard(ctx context.Context, payload ProjectDashboardPayload) (ProjectDashboard, error) {
+	if payload.ProjectID <= 0 {
+		return ProjectDashboard{}, fmt.Errorf("project_id must be > 0")
+	}
+
+	dashboard := ProjectDashboard{ProjectID: payload.ProjectID}
+	var indexingInt int
+	if err := s.db.QueryRowContext(
+		ctx,
+		`SELECT COALESCE(retrieval_backend, 'local'), COALESCE(retrieval_indexing, 0)
+		 FROM projects WHERE id = ?`,
+		payload.ProjectID,
+	).Scan(&dashboard.RetrievalBackend, &indexingInt); err != nil {
+		return ProjectDashboard{}, err
+	}
+
+	_ = s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM conversations WHERE project_id = ?`,
+		payload.ProjectID,
+	).Scan(&dashboard.ConversationCount)
+	_ = s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*)
+		 FROM attachments a
+		 JOIN conversations c ON c.id = a.conversation_id
+		 WHERE c.project_id = ?`,
+		payload.ProjectID,
+	).Scan(&dashboard.FileCount)
+	_ = s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM knowledge_items WHERE project_id = ? AND scope = 'project'`,
+		payload.ProjectID,
+	).Scan(&dashboard.ProjectKnowledgeCount)
+
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT m.token_stats, m.content
+		 FROM messages m
+		 JOIN conversations c ON c.id = m.conversation_id
+		 WHERE c.project_id = ?`,
+		payload.ProjectID,
+	)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var rawStats, content string
+			if scanErr := rows.Scan(&rawStats, &content); scanErr != nil {
+				continue
+			}
+			stats := MessageTokenStats{}
+			if rawStats != "" {
+				_ = json.Unmarshal([]byte(rawStats), &stats)
+			}
+			estimated := stats.TokensIn + stats.TokensOut
+			if estimated <= 0 {
+				estimated = estimateTokenCount(content)
+			}
+			dashboard.TotalTokens += int64(estimated)
+		}
+	}
+
+	if indexingInt != 0 {
+		dashboard.RetrievalStatus = "indexing"
+	} else {
+		dashboard.RetrievalStatus = "ready"
+	}
+
+	return dashboard, nil
 }

@@ -22,7 +22,7 @@ import {
 } from "./chat.js";
 import {
   newConversation, loadPersistedConversations, saveActiveConversationSettings,
-  searchConversations, renderConversationList, loadProjects, bindProjectControls,
+  searchConversations, renderConversationList, loadProjects, bindProjectControls, refreshProjectDashboard,
 } from "./conversations.js";
 import { loadMCPServers, initMCPFormListeners } from "./mcp.js";
 import { loadGeneralSettings, saveGeneralSettings, exportSettingsTOML, importSettingsTOML, loadAboutInfo } from "./settings.js";
@@ -31,6 +31,7 @@ import { initializeUpdatesUI, checkForUpdates } from "./updates.js";
 import { initializePluginSystem, loadPluginsFromDirectory } from "./plugins.js";
 import { registerBuiltInPlugins } from "./plugins_builtin.js";
 import { bindPluginManagerEvents, loadPluginManager } from "./plugins_manager.js";
+import { bindAttachmentEvents, loadActiveConversationAttachments } from "./attachments.js";
 
 // ── Settings navigation ────────────────────────────────────────────────────
 function switchSettingsSection(sectionId) {
@@ -260,6 +261,8 @@ function bindEvents() {
       applyTranslations();
       await saveGeneralSettings();
       renderConversationList();
+      await refreshProjectDashboard();
+      await loadActiveConversationAttachments();
     });
   }
   if (els.theme) {
@@ -381,6 +384,7 @@ async function init() {
   applyTranslations();
   bindEvents();
   bindProjectControls();
+  bindAttachmentEvents();
   bindPluginManagerEvents();
   initMCPFormListeners();
   registerBuiltInPlugins();
@@ -389,6 +393,7 @@ async function init() {
   initializeUpdatesUI();
   await loadProviders();
   await loadProjects();
+  await refreshProjectDashboard();
   await loadProviderProfiles();
   await loadPersistedConversations();
   renderLastUsedModels();

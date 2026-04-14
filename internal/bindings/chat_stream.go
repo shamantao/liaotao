@@ -24,6 +24,9 @@ func (s *Service) streamOpenAI(ctx context.Context, convID string, cfg openAICon
 	if payload.SystemPrompt != "" {
 		messages = append(messages, openAIChatMessage{Role: "system", Content: payload.SystemPrompt})
 	}
+	if len(payload.ContextMessages) > 0 {
+		messages = append(messages, payload.ContextMessages...)
+	}
 	messages = append(messages, openAIChatMessage{Role: "user", Content: prompt})
 	reqPayload := openAIChatRequest{
 		Model:    model,
@@ -158,6 +161,14 @@ func (s *Service) streamOllama(ctx context.Context, convID string, cfg openAICon
 	messages := make([]map[string]string, 0, 2)
 	if payload.SystemPrompt != "" {
 		messages = append(messages, map[string]string{"role": "system", "content": payload.SystemPrompt})
+	}
+	for _, msg := range payload.ContextMessages {
+		role := strings.TrimSpace(msg.Role)
+		content := strings.TrimSpace(msg.Content)
+		if role == "" || content == "" {
+			continue
+		}
+		messages = append(messages, map[string]string{"role": role, "content": content})
 	}
 	messages = append(messages, map[string]string{"role": "user", "content": prompt})
 	reqPayload["messages"] = messages

@@ -114,6 +114,8 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			name TEXT NOT NULL UNIQUE,
 			description TEXT NOT NULL DEFAULT '',
 			archived INTEGER NOT NULL DEFAULT 0,
+			retrieval_backend TEXT NOT NULL DEFAULT 'local',
+			retrieval_indexing INTEGER NOT NULL DEFAULT 0,
 			created_at TEXT NOT NULL DEFAULT (datetime('now')),
 			updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 		);`,
@@ -140,9 +142,46 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			created_at TEXT NOT NULL DEFAULT (datetime('now')),
 			FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 		);`,
+		`CREATE TABLE IF NOT EXISTS attachments (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			conversation_id INTEGER NOT NULL,
+			file_name TEXT NOT NULL,
+			storage_path TEXT NOT NULL,
+			mime_type TEXT NOT NULL DEFAULT '',
+			size_bytes INTEGER NOT NULL DEFAULT 0,
+			shared_in_project INTEGER NOT NULL DEFAULT 0,
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+		);`,
+		`CREATE TABLE IF NOT EXISTS conversation_memory (
+			conversation_id INTEGER PRIMARY KEY,
+			summary_text TEXT NOT NULL DEFAULT '',
+			facts_json TEXT NOT NULL DEFAULT '[]',
+			message_count INTEGER NOT NULL DEFAULT 0,
+			updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+			FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+		);`,
+		`CREATE TABLE IF NOT EXISTS knowledge_items (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			conversation_id INTEGER NOT NULL,
+			project_id INTEGER NOT NULL,
+			attachment_id INTEGER NOT NULL,
+			scope TEXT NOT NULL DEFAULT 'conversation',
+			source_name TEXT NOT NULL,
+			source_path TEXT NOT NULL,
+			mime_type TEXT NOT NULL DEFAULT '',
+			chunk_index INTEGER NOT NULL,
+			chunk_text TEXT NOT NULL,
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+			FOREIGN KEY(attachment_id) REFERENCES attachments(id) ON DELETE CASCADE
+		);`,
 		`CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_attachments_conversation_id ON attachments(conversation_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_knowledge_items_conversation_id ON knowledge_items(conversation_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_knowledge_items_project_id ON knowledge_items(project_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_knowledge_items_attachment_id ON knowledge_items(attachment_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at DESC);`,
-		`CREATE INDEX IF NOT EXISTS idx_conversations_project_id ON conversations(project_id);`,
 		`CREATE TABLE IF NOT EXISTS providers (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			name TEXT NOT NULL UNIQUE,
@@ -210,6 +249,117 @@ func migrate(ctx context.Context, db *sql.DB) error {
 	}
 	if err := ensureConversationProjectColumn(ctx, db); err != nil {
 		return err
+	}
+	if err := ensureProjectRetrievalColumns(ctx, db); err != nil {
+		return err
+	}
+	if err := ensureAttachmentSharedColumn(ctx, db); err != nil {
+		return err
+	}
+	if err := ensureKnowledgeItemScopeColumn(ctx, db); err != nil {
+		return err
+	}
+	return nil
+}
+
+func ensureProjectRetrievalColumns(ctx context.Context, db *sql.DB) error {
+	rows, err := db.QueryContext(ctx, `PRAGMA table_info(projects)`)
+	if err != nil {
+		return fmt.Errorf("pragma table_info projects: %w", err)
+	}
+	defer rows.Close()
+
+	hasBackend := false
+	hasIndexing := false
+	for rows.Next() {
+		var cid, notnull, pk int
+		var name, typ string
+		var dflt sql.NullString
+		if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
+			return err
+		}
+		switch name {
+		case "retrieval_backend":
+			hasBackend = true
+		case "retrieval_indexing":
+			hasIndexing = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	if !hasBackend {
+		if _, err := db.ExecContext(ctx, `ALTER TABLE projects ADD COLUMN retrieval_backend TEXT NOT NULL DEFAULT 'local'`); err != nil {
+			return fmt.Errorf("add projects.retrieval_backend: %w", err)
+		}
+	}
+	if !hasIndexing {
+		if _, err := db.ExecContext(ctx, `ALTER TABLE projects ADD COLUMN retrieval_indexing INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return fmt.Errorf("add projects.retrieval_indexing: %w", err)
+		}
+	}
+	return nil
+}
+
+func ensureAttachmentSharedColumn(ctx context.Context, db *sql.DB) error {
+	rows, err := db.QueryContext(ctx, `PRAGMA table_info(attachments)`)
+	if err != nil {
+		return fmt.Errorf("pragma table_info attachments: %w", err)
+	}
+	defer rows.Close()
+
+	hasShared := false
+	for rows.Next() {
+		var cid, notnull, pk int
+		var name, typ string
+		var dflt sql.NullString
+		if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
+			return err
+		}
+		if name == "shared_in_project" {
+			hasShared = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	if !hasShared {
+		if _, err := db.ExecContext(ctx, `ALTER TABLE attachments ADD COLUMN shared_in_project INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return fmt.Errorf("add attachments.shared_in_project: %w", err)
+		}
+	}
+	return nil
+}
+
+func ensureKnowledgeItemScopeColumn(ctx context.Context, db *sql.DB) error {
+	rows, err := db.QueryContext(ctx, `PRAGMA table_info(knowledge_items)`)
+	if err != nil {
+		return fmt.Errorf("pragma table_info knowledge_items: %w", err)
+	}
+	defer rows.Close()
+
+	hasScope := false
+	for rows.Next() {
+		var cid, notnull, pk int
+		var name, typ string
+		var dflt sql.NullString
+		if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
+			return err
+		}
+		if name == "scope" {
+			hasScope = true
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	if !hasScope {
+		if _, err := db.ExecContext(ctx, `ALTER TABLE knowledge_items ADD COLUMN scope TEXT NOT NULL DEFAULT 'conversation'`); err != nil {
+			return fmt.Errorf("add knowledge_items.scope: %w", err)
+		}
 	}
 	return nil
 }
