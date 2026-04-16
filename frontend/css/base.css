@@ -211,6 +211,40 @@ body {
   opacity: 1;
 }
 
+/* ── Conversation tag pills ─────────────────────────────────────────── */
+.conv-tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  margin-top: 0.1rem;
+}
+
+.conv-tag-pill {
+  display: inline-block;
+  padding: 0.05rem 0.35rem;
+  border-radius: 8px;
+  font-size: 0.62rem;
+  color: #fff;
+  opacity: 0.9;
+  white-space: nowrap;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conv-token-badge {
+  margin-left: 0.35rem;
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  opacity: 0.7;
+}
+
+/* Show export button on hover / active, same as rename/delete */
+.conversation-item:hover .conversation-export-btn,
+.conversation-item.active .conversation-export-btn {
+  opacity: 1;
+}
+
 /* ── Sidebar ───────────────────────────────────────────────────────── */
 .sidebar-wrap {
   position: relative;
@@ -257,6 +291,12 @@ body {
 }
 
 .project-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tag-row {
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -519,6 +559,7 @@ body {
 /* ── Sidebar collapsed state ───────────────────────────────────────── */
 .app-shell.sidebar-collapsed .sidebar h3,
 .app-shell.sidebar-collapsed .project-row,
+.app-shell.sidebar-collapsed .tag-row,
 .app-shell.sidebar-collapsed .conversation-item .label,
 .app-shell.sidebar-collapsed .conversation-search,
 .app-shell.sidebar-collapsed .conversation-main,

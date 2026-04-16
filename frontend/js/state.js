@@ -16,6 +16,8 @@ export const appState = {
   sidebarWidth:        290,
   expandedSidebarWidth: 290,
   conversationSearchQuery: "",
+  tags:                [],     // TagRecord[] cached from DB
+  activeTagId:         0,      // 0 = all tags filter
   providers:           [],     // ProviderRecord[] cached from DB
   projects:            [],     // ProjectRecord[] cached from DB
   activeProjectId:     0,      // 0 = all projects filter
@@ -58,6 +60,8 @@ export const els = {
   stop:           document.getElementById("stop-btn"),
   newChat:        document.getElementById("new-chat-btn"),
   conversationSearch: document.getElementById("conversation-search"),
+  conversationTagFilter: document.getElementById("conversation-tag-filter"),
+  newTagBtn: document.getElementById("new-tag-btn"),
   attachmentList: document.getElementById("attachment-list"),
   chatProvider:   document.getElementById("chat-provider"),
   chatModelFilter: document.getElementById("chat-model-filter"),

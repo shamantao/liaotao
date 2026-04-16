@@ -47,17 +47,26 @@ func (s *Service) Health(ctx context.Context) (map[string]any, error) {
 
 // ConversationSummary is a thin list item payload for the sidebar.
 type ConversationSummary struct {
-	ID           int64   `json:"id"`
-	Title        string  `json:"title"`
-	ProjectID    int64   `json:"project_id"`
-	Project      string  `json:"project"`
-	ProviderID   int64   `json:"provider_id"` // numeric FK; 0 = no provider
-	Provider     string  `json:"provider"`    // resolved display name
-	Model        string  `json:"model"`
-	Temperature  float64 `json:"temperature"`
-	MaxTokens    int     `json:"max_tokens"`
-	SystemPrompt string  `json:"system_prompt"`
-	UpdatedAt    string  `json:"updated_at"`
+	ID           int64     `json:"id"`
+	Title        string    `json:"title"`
+	ProjectID    int64     `json:"project_id"`
+	Project      string    `json:"project"`
+	ProviderID   int64     `json:"provider_id"` // numeric FK; 0 = no provider
+	Provider     string    `json:"provider"`    // resolved display name
+	Model        string    `json:"model"`
+	Temperature  float64   `json:"temperature"`
+	MaxTokens    int       `json:"max_tokens"`
+	SystemPrompt string    `json:"system_prompt"`
+	UpdatedAt    string    `json:"updated_at"`
+	TokenCount   int64     `json:"token_count"` // CONV2-05: estimated total tokens
+	Tags         []TagItem `json:"tags"`        // CONV2-02: user-defined tags
+}
+
+// TagItem is a lightweight tag descriptor returned inside ConversationSummary.
+type TagItem struct {
+	ID    int64  `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color"`
 }
 
 // CreateConversationPayload is the frontend request payload to create a conversation.
@@ -120,7 +129,81 @@ type MessageSummary struct {
 	CreatedAt  string            `json:"created_at"`
 }
 
-// CreateConversation inserts and returns a new conversation id.
+// conversationSelectSQL is the canonical SELECT column list for conversation queries.
+// It computes token_count inline so callers always get a populated value.
+const conversationSelectSQL = `
+	c.id, c.title,
+	COALESCE(c.project_id, 1), COALESCE(pr.name, ''),
+	COALESCE(c.provider_id, 0), COALESCE(p.name, ''),
+	c.model, COALESCE(c.temperature, 0.7), COALESCE(c.max_tokens, 0),
+	COALESCE(c.system_prompt, ''), c.updated_at,
+	COALESCE((
+		SELECT SUM(
+			COALESCE(json_extract(m.token_stats, '$.tokens_in'),  0) +
+			COALESCE(json_extract(m.token_stats, '$.tokens_out'), 0)
+		) FROM messages m WHERE m.conversation_id = c.id
+	), 0)`
+
+// scanConversationSummary scans the conversationSelectSQL columns into item.
+// Tags are left empty and filled by a separate batch query when needed.
+func scanConversationSummary(scanner interface{ Scan(...any) error }, item *ConversationSummary) error {
+	return scanner.Scan(
+		&item.ID, &item.Title,
+		&item.ProjectID, &item.Project,
+		&item.ProviderID, &item.Provider,
+		&item.Model, &item.Temperature, &item.MaxTokens,
+		&item.SystemPrompt, &item.UpdatedAt,
+		&item.TokenCount,
+	)
+}
+
+// loadTagsForConversations enriches a slice of ConversationSummary with tags.
+func (s *Service) loadTagsForConversations(ctx context.Context, items []ConversationSummary) error {
+	if len(items) == 0 {
+		return nil
+	}
+	ids := make([]any, len(items))
+	for i, item := range items {
+		ids[i] = item.ID
+	}
+	placeholders := strings.Repeat("?,", len(ids))
+	placeholders = placeholders[:len(placeholders)-1]
+
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT ct.conversation_id, t.id, t.name, t.color
+		 FROM conversation_tags ct
+		 JOIN tags t ON t.id = ct.tag_id
+		 WHERE ct.conversation_id IN (`+placeholders+`)
+		 ORDER BY t.name`,
+		ids...,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	tagMap := make(map[int64][]TagItem)
+	for rows.Next() {
+		var convID int64
+		var tag TagItem
+		if err := rows.Scan(&convID, &tag.ID, &tag.Name, &tag.Color); err != nil {
+			return err
+		}
+		tagMap[convID] = append(tagMap[convID], tag)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for i := range items {
+		if tags, ok := tagMap[items[i].ID]; ok {
+			items[i].Tags = tags
+		} else {
+			items[i].Tags = []TagItem{}
+		}
+	}
+	return nil
+}
+
 func (s *Service) CreateConversation(ctx context.Context, payload CreateConversationPayload) (ConversationSummary, error) {
 	title := payload.Title
 	if title == "" {
@@ -162,17 +245,17 @@ func (s *Service) CreateConversation(ctx context.Context, payload CreateConversa
 	item := ConversationSummary{}
 	err = s.db.QueryRowContext(
 		ctx,
-		`SELECT c.id, c.title, COALESCE(c.project_id, 1), COALESCE(pr.name, ''), COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
-		        COALESCE(c.temperature, 0.7), COALESCE(c.max_tokens, 0), COALESCE(c.system_prompt, ''), c.updated_at
+		`SELECT`+conversationSelectSQL+`
 		 FROM conversations c
 		 LEFT JOIN projects pr ON pr.id = c.project_id
 		 LEFT JOIN providers p ON p.id = c.provider_id
 		 WHERE c.id = ?`,
 		id,
-	).Scan(&item.ID, &item.Title, &item.ProjectID, &item.Project, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt)
+	).Scan(&item.ID, &item.Title, &item.ProjectID, &item.Project, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt, &item.TokenCount)
 	if err != nil {
 		return ConversationSummary{}, err
 	}
+	item.Tags = []TagItem{}
 
 	return item, nil
 }
@@ -201,8 +284,7 @@ func (s *Service) listConversationsWithQuery(ctx context.Context, query string, 
 	if trimmed == "" {
 		rows, err = s.db.QueryContext(
 			ctx,
-			`SELECT c.id, c.title, COALESCE(c.project_id, 1), COALESCE(pr.name, ''), COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
-			        COALESCE(c.temperature, 0.7), COALESCE(c.max_tokens, 0), COALESCE(c.system_prompt, ''), c.updated_at
+			`SELECT`+conversationSelectSQL+`
 			 FROM conversations c
 			 LEFT JOIN projects pr ON pr.id = c.project_id
 			 LEFT JOIN providers p ON p.id = c.provider_id
@@ -214,28 +296,32 @@ func (s *Service) listConversationsWithQuery(ctx context.Context, query string, 
 			limit,
 		)
 	} else {
+		// Use FTS5 for fast full-text search across message content; fall back
+		// to a LIKE title match as well so partial title queries still work.
+		trimmedQ := trimmed + "*"
 		needle := "%" + strings.ToLower(trimmed) + "%"
 		rows, err = s.db.QueryContext(
 			ctx,
-			`SELECT c.id, c.title, COALESCE(c.project_id, 1), COALESCE(pr.name, ''), COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
-			        COALESCE(c.temperature, 0.7), COALESCE(c.max_tokens, 0), COALESCE(c.system_prompt, ''), c.updated_at
+			`SELECT`+conversationSelectSQL+`
 			 FROM conversations c
 			 LEFT JOIN projects pr ON pr.id = c.project_id
 			 LEFT JOIN providers p ON p.id = c.provider_id
 			 WHERE (? <= 0 OR c.project_id = ?)
 			   AND (
 			       LOWER(c.title) LIKE ?
-			    OR EXISTS (
-			      SELECT 1 FROM messages m
-			      WHERE m.conversation_id = c.id
-			        AND LOWER(m.content) LIKE ?
-			    ))
+			    OR c.id IN (
+			         SELECT DISTINCT m.conversation_id
+			         FROM messages_fts
+			         JOIN messages m ON m.id = messages_fts.rowid
+			         WHERE messages_fts MATCH ?
+			       )
+			    )
 			 ORDER BY c.updated_at DESC
 			 LIMIT ?`,
 			projectID,
 			projectID,
 			needle,
-			needle,
+			trimmedQ,
 			limit,
 		)
 	}
@@ -247,12 +333,15 @@ func (s *Service) listConversationsWithQuery(ctx context.Context, query string, 
 	items := make([]ConversationSummary, 0, limit)
 	for rows.Next() {
 		var item ConversationSummary
-		if err := rows.Scan(&item.ID, &item.Title, &item.ProjectID, &item.Project, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.Title, &item.ProjectID, &item.Project, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt, &item.TokenCount); err != nil {
 			return nil, err
 		}
 		items = append(items, item)
 	}
 	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if err := s.loadTagsForConversations(ctx, items); err != nil {
 		return nil, err
 	}
 	return items, nil
@@ -288,17 +377,17 @@ func (s *Service) RenameConversation(ctx context.Context, payload RenameConversa
 	item := ConversationSummary{}
 	err = s.db.QueryRowContext(
 		ctx,
-		`SELECT c.id, c.title, COALESCE(c.project_id, 1), COALESCE(pr.name, ''), COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
-		        COALESCE(c.temperature, 0.7), COALESCE(c.max_tokens, 0), COALESCE(c.system_prompt, ''), c.updated_at
+		`SELECT`+conversationSelectSQL+`
 		 FROM conversations c
 		 LEFT JOIN projects pr ON pr.id = c.project_id
 		 LEFT JOIN providers p ON p.id = c.provider_id
 		 WHERE c.id = ?`,
 		payload.ConversationID,
-	).Scan(&item.ID, &item.Title, &item.ProjectID, &item.Project, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt)
+	).Scan(&item.ID, &item.Title, &item.ProjectID, &item.Project, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt, &item.TokenCount)
 	if err != nil {
 		return ConversationSummary{}, err
 	}
+	item.Tags = []TagItem{}
 
 	return item, nil
 }
@@ -357,17 +446,17 @@ func (s *Service) UpdateConversationSettings(ctx context.Context, payload Update
 	item := ConversationSummary{}
 	err = s.db.QueryRowContext(
 		ctx,
-		`SELECT c.id, c.title, COALESCE(c.project_id, 1), COALESCE(pr.name, ''), COALESCE(c.provider_id, 0), COALESCE(p.name, ''), c.model,
-		        COALESCE(c.temperature, 0.7), COALESCE(c.max_tokens, 0), COALESCE(c.system_prompt, ''), c.updated_at
+		`SELECT`+conversationSelectSQL+`
 		 FROM conversations c
 		 LEFT JOIN projects pr ON pr.id = c.project_id
 		 LEFT JOIN providers p ON p.id = c.provider_id
 		 WHERE c.id = ?`,
 		payload.ConversationID,
-	).Scan(&item.ID, &item.Title, &item.ProjectID, &item.Project, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt)
+	).Scan(&item.ID, &item.Title, &item.ProjectID, &item.Project, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt, &item.TokenCount)
 	if err != nil {
 		return ConversationSummary{}, err
 	}
+	item.Tags = []TagItem{}
 
 	return item, nil
 }

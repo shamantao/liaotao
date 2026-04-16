@@ -67,6 +67,12 @@
             </section>
             <button class="new-chat icon-only-btn" id="new-chat-btn" data-i18n-title="sidebar.new_chat" title="New chat" aria-label="New chat"><span class="new-chat-icon" aria-hidden="true">✚</span></button>
             <input id="conversation-search" class="conversation-search" type="search" data-i18n-placeholder="sidebar.search_placeholder" placeholder="Search conversations" aria-label="Search conversations">
+            <div class="tag-row">
+              <select id="conversation-tag-filter" class="project-filter" aria-label="Tag filter">
+                <option value="0" data-i18n="sidebar.tag_filter_all">All tags</option>
+              </select>
+              <button class="icon-btn" id="new-tag-btn" data-i18n-title="sidebar.create_tag" title="Create tag" aria-label="Create tag">🏷</button>
+            </div>
             <section class="sidebar-attachments">
               <h4 class="sidebar-attachments-title" data-i18n="sidebar.attachments">Attachments</h4>
               <div class="attachment-list" id="attachment-list"></div>

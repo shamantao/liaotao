@@ -259,6 +259,64 @@ func migrate(ctx context.Context, db *sql.DB) error {
 	if err := ensureKnowledgeItemScopeColumn(ctx, db); err != nil {
 		return err
 	}
+	if err := ensureMessagesFTS(ctx, db); err != nil {
+		return err
+	}
+	if err := ensureTagsTables(ctx, db); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ensureMessagesFTS creates the FTS5 virtual table and its sync triggers if
+// they do not already exist (idempotent on subsequent startups).
+func ensureMessagesFTS(ctx context.Context, db *sql.DB) error {
+	stmts := []string{
+		// Content-table FTS5 index pointing at messages.content.
+		`CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts
+		 USING fts5(content, content='messages', content_rowid='id');`,
+		// Keep FTS in sync with the physical table.
+		`CREATE TRIGGER IF NOT EXISTS messages_ai AFTER INSERT ON messages BEGIN
+		   INSERT INTO messages_fts(rowid, content) VALUES (new.id, new.content);
+		 END;`,
+		`CREATE TRIGGER IF NOT EXISTS messages_ad AFTER DELETE ON messages BEGIN
+		   INSERT INTO messages_fts(messages_fts, rowid, content) VALUES ('delete', old.id, old.content);
+		 END;`,
+		`CREATE TRIGGER IF NOT EXISTS messages_au AFTER UPDATE ON messages BEGIN
+		   INSERT INTO messages_fts(messages_fts, rowid, content) VALUES ('delete', old.id, old.content);
+		   INSERT INTO messages_fts(rowid, content) VALUES (new.id, new.content);
+		 END;`,
+	}
+	for _, s := range stmts {
+		if _, err := db.ExecContext(ctx, s); err != nil {
+			return fmt.Errorf("ensureMessagesFTS: %w", err)
+		}
+	}
+	return nil
+}
+
+// ensureTagsTables creates the tags and conversation_tags tables if they do
+// not already exist.
+func ensureTagsTables(ctx context.Context, db *sql.DB) error {
+	stmts := []string{
+		`CREATE TABLE IF NOT EXISTS tags (
+			id         INTEGER PRIMARY KEY AUTOINCREMENT,
+			name       TEXT    NOT NULL UNIQUE,
+			color      TEXT    NOT NULL DEFAULT '#6c757d',
+			created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+		);`,
+		`CREATE TABLE IF NOT EXISTS conversation_tags (
+			conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+			tag_id          INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+			PRIMARY KEY (conversation_id, tag_id)
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_conversation_tags_tag_id ON conversation_tags(tag_id);`,
+	}
+	for _, s := range stmts {
+		if _, err := db.ExecContext(ctx, s); err != nil {
+			return fmt.Errorf("ensureTagsTables: %w", err)
+		}
+	}
 	return nil
 }
 

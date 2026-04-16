@@ -23,6 +23,12 @@ function escapeHTML(value) {
     .replace(/'/g, "&#39;");
 }
 
+function formatTokenCount(n) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return String(n);
+}
+
 function parseUpdatedAt(value) {
   if (!value || typeof value !== "string") return null;
   const parsed = new Date(value.replace(" ", "T"));
@@ -206,10 +212,39 @@ export async function loadProjects() {
   }
   renderProjectFilter();
   await refreshProjectDashboard();
+  await loadTags();
+}
+
+async function loadTags() {
+  const result = await bridge.callService("ListTags");
+  appState.tags = Array.isArray(result)
+    ? result.map((item) => ({
+      id: Number(item.id) || 0,
+      name: String(item.name || ""),
+      color: String(item.color || "#6c757d"),
+    })).filter((item) => item.id > 0)
+    : [];
+  renderTagFilter();
+}
+
+function renderTagFilter() {
+  if (!els.conversationTagFilter) return;
+  const options = [`<option value="0">${escapeHTML(t("sidebar.tag_filter_all"))}</option>`]
+    .concat(appState.tags.map((tag) => `<option value="${tag.id}">${escapeHTML(tag.name)}</option>`));
+  els.conversationTagFilter.innerHTML = options.join("");
+  els.conversationTagFilter.value = String(Number(appState.activeTagId) || 0);
 }
 
 async function fetchConversationSummaries(limit = 100) {
   const projectID = Number(appState.activeProjectId) || 0;
+  const tagID = Number(appState.activeTagId) || 0;
+  if (tagID > 0) {
+    return bridge.callService("ListConversationsByTag", {
+      tag_id: tagID,
+      limit,
+      project_id: projectID,
+    });
+  }
   if (appState.conversationSearchQuery) {
     return bridge.callService("SearchConversations", {
       query: appState.conversationSearchQuery,
@@ -256,6 +291,8 @@ function mapConversationSummary(item) {
     maxTokens: Number(item.max_tokens) > 0 ? Number(item.max_tokens) : 0,
     systemPrompt: item.system_prompt || "",
     updatedAt: item.updated_at || "",
+    tokenCount: Number(item.token_count) || 0,
+    tags: Array.isArray(item.tags) ? item.tags : [],
     messages: [],
   };
 }
@@ -424,13 +461,21 @@ export function renderConversationList() {
     groupItems.forEach((conv) => {
       const row = document.createElement("div");
       row.className = `conversation-item${conv.id === appState.activeConversationId ? " active" : ""}`;
+      const tagPills = (conv.tags || []).map((tag) =>
+        `<span class="conv-tag-pill" style="background:${escapeHTML(tag.color)}" title="${escapeHTML(tag.name)}">${escapeHTML(tag.name)}</span>`
+      ).join("");
+      const tokenBadge = conv.tokenCount > 0
+        ? `<span class="conv-token-badge" title="${t("sidebar.token_count_title")}">~${formatTokenCount(conv.tokenCount)}</span>`
+        : "";
       row.innerHTML = `
         <span class="dot">${localizeConversationTitle(conv.title, conv.id).slice(0, 1).toUpperCase()}</span>
         <div class="conversation-main">
           <span class="label">${escapeHTML(localizeConversationTitle(conv.title, conv.id))}</span>
-          <span class="conversation-meta">${formatConversationDateTime(conv.updatedAt)}</span>
+          <span class="conversation-meta">${formatConversationDateTime(conv.updatedAt)}${tokenBadge}</span>
+          ${tagPills ? `<span class="conv-tags-row">${tagPills}</span>` : ""}
         </div>
         <div class="conversation-row-actions">
+          <button class="conversation-export-btn icon-only-btn" type="button" title="${t("sidebar.export_conversation")}" aria-label="${t("sidebar.export_conversation")}">⬇</button>
           <button class="conversation-rename-btn icon-only-btn" type="button" title="${t("sidebar.rename_save")}" aria-label="${t("sidebar.rename_save")}">✎</button>
           <button class="conversation-delete-btn icon-only-btn" type="button" title="${t("sidebar.delete_title")}" aria-label="${t("sidebar.delete_title")}">🗑</button>
         </div>
@@ -441,9 +486,24 @@ export function renderConversationList() {
         await activateConversation(conv);
       };
 
+      const exportBtn = row.querySelector(".conversation-export-btn");
       const renameBtn = row.querySelector(".conversation-rename-btn");
       const deleteBtn = row.querySelector(".conversation-delete-btn");
 
+      if (exportBtn) {
+        exportBtn.addEventListener("click", async (event) => {
+          event.stopPropagation();
+          try {
+            const result = await bridge.callService("ExportConversation", {
+              conversation_id: conv.id,
+              format: "markdown",
+            });
+            els.status.textContent = t("sidebar.export_done", { path: result.file_path || "" });
+          } catch (err) {
+            els.status.textContent = `export failed: ${String(err && err.message ? err.message : err)}`;
+          }
+        });
+      }
       renameBtn.addEventListener("click", (event) => {
         event.stopPropagation();
         startRenameConversation(row, conv);
@@ -467,6 +527,7 @@ export async function loadPersistedConversations() {
   if (els.conversationSearch) {
     els.conversationSearch.value = appState.conversationSearchQuery;
   }
+  await loadTags();
   const loaded = await reloadConversationList(appState.activeConversationId || 0);
   if (!loaded && !appState.conversationSearchQuery) {
     await newConversation();
@@ -524,6 +585,41 @@ export async function newConversation() {
   renderMessages();
   await loadActiveConversationAttachments();
   els.prompt.focus();
+}
+
+export function bindTagControls() {
+  if (els.conversationTagFilter) {
+    els.conversationTagFilter.addEventListener("change", async () => {
+      appState.activeTagId = Number(els.conversationTagFilter.value) || 0;
+      await loadPersistedConversations();
+    });
+  }
+
+  if (els.newTagBtn) {
+    els.newTagBtn.addEventListener("click", async () => {
+      const name = window.prompt(t("sidebar.new_tag_name") || "Tag name");
+      if (!name || !name.trim()) return;
+      try {
+        const created = await bridge.callService("CreateTag", {
+          name: name.trim(),
+          color: "#4b6cb7",
+        });
+        if (appState.activeConversationId) {
+          await bridge.callService("AddTagToConversation", {
+            conversation_id: Number(appState.activeConversationId),
+            tag_id: Number(created.id),
+          });
+          els.status.textContent = t("sidebar.tag_added");
+        } else {
+          els.status.textContent = t("sidebar.tag_created");
+        }
+        await loadTags();
+        await loadPersistedConversations();
+      } catch (err) {
+        els.status.textContent = `tag failed: ${String(err && err.message ? err.message : err)}`;
+      }
+    });
+  }
 }
 
 export function bindProjectControls() {

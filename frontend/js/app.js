@@ -22,7 +22,7 @@ import {
 } from "./chat.js";
 import {
   newConversation, loadPersistedConversations, saveActiveConversationSettings,
-  searchConversations, renderConversationList, loadProjects, bindProjectControls, refreshProjectDashboard,
+  searchConversations, renderConversationList, loadProjects, bindProjectControls, bindTagControls, refreshProjectDashboard,
 } from "./conversations.js";
 import { loadMCPServers, initMCPFormListeners } from "./mcp.js";
 import { loadGeneralSettings, saveGeneralSettings, exportSettingsTOML, importSettingsTOML, loadAboutInfo } from "./settings.js";
@@ -384,6 +384,7 @@ async function init() {
   applyTranslations();
   bindEvents();
   bindProjectControls();
+  bindTagControls();
   bindAttachmentEvents();
   bindPluginManagerEvents();
   initMCPFormListeners();

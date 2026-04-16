@@ -50,6 +50,18 @@
     "renamed": "conversation renommée",
     "deleted": "conversation supprimée",
     "title_required": "titre requis"
+    ,"token_count_title": "~tokens estimés dans la conversation"
+    ,"export_conversation": "Exporter la conversation"
+    ,"export_done": "Exporté vers {{path}}"
+    ,"tags": "Tags"
+    ,"no_tags": "Pas de tags"
+    ,"tag_filter_all": "Tous les tags"
+    ,"tag_added": "tag ajouté"
+    ,"tag_removed": "tag retiré"
+    ,"tag_created": "tag créé"
+    ,"tag_deleted": "tag supprimé"
+    ,"create_tag": "Créer un tag"
+    ,"new_tag_name": "Nom du nouveau tag"
   },
   "chat": {
     "placeholder": "Écrire un message, Entrée pour envoyer, Maj+Entrée pour un saut de ligne",

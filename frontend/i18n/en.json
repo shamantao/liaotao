@@ -50,6 +50,18 @@
     "renamed": "conversation renamed",
     "deleted": "conversation deleted",
     "title_required": "title required"
+    ,"token_count_title": "~estimated tokens in conversation"
+    ,"export_conversation": "Export conversation"
+    ,"export_done": "Exported to {{path}}"
+    ,"tags": "Tags"
+    ,"no_tags": "No tags"
+    ,"tag_filter_all": "All tags"
+    ,"tag_added": "tag added"
+    ,"tag_removed": "tag removed"
+    ,"tag_created": "tag created"
+    ,"tag_deleted": "tag deleted"
+    ,"create_tag": "Create tag"
+    ,"new_tag_name": "New tag name"
   },
   "chat": {
     "placeholder": "Type message, Enter to send, Shift+Enter for newline",
