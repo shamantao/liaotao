@@ -51,6 +51,11 @@
     "deleted": "conversation supprimée",
     "title_required": "titre requis"
     ,"token_count_title": "~tokens estimés dans la conversation"
+    ,"more_actions": "Plus d'actions"
+    ,"rename_action": "Renommer"
+    ,"delete_action": "Supprimer"
+    ,"export_md": "Exporter en Markdown"
+    ,"export_json": "Exporter en JSON"
     ,"export_conversation": "Exporter la conversation"
     ,"export_done": "Exporté vers {{path}}"
     ,"tags": "Tags"

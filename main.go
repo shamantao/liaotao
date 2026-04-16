@@ -74,6 +74,9 @@ func main() {
 		},
 	})
 
+	// Provide the app reference so bindings can open native OS dialogs.
+	bindingService.SetApp(app)
+
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:  cfg.App.Name,
 		Width:  1200,

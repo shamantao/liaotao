@@ -43,10 +43,17 @@
       <div class="chat-layout">
         <div class="sidebar-wrap">
           <aside class="sidebar">
+            <!-- Sidebar header: title + collapse toggle + new chat -->
             <div class="sidebar-header">
               <h3 data-i18n="sidebar.conversations">Conversations</h3>
-              <button class="icon-btn" id="sidebar-toggle" title="Expand or collapse sidebar">☰</button>
+              <div class="sidebar-header-actions">
+                <button class="new-chat icon-only-btn" id="new-chat-btn" data-i18n-title="sidebar.new_chat" title="New chat" aria-label="New chat"><span class="new-chat-icon" aria-hidden="true">✚</span></button>
+                <button class="icon-btn" id="sidebar-toggle" title="Expand or collapse sidebar">☰</button>
+              </div>
             </div>
+            <!-- Global search -->
+            <input id="conversation-search" class="conversation-search" type="search" data-i18n-placeholder="sidebar.search_placeholder" placeholder="Search conversations" aria-label="Search conversations">
+            <!-- Project filter row -->
             <div class="project-row">
               <label for="project-filter" class="sr-only" data-i18n="sidebar.projects">Projects</label>
               <select id="project-filter" class="project-filter" aria-label="Project filter"></select>
@@ -54,6 +61,7 @@
               <button class="icon-btn" id="rename-project-btn" data-i18n-title="sidebar.rename_project" title="Rename project" aria-label="Rename project">✎</button>
               <button class="icon-btn" id="archive-project-btn" data-i18n-title="sidebar.archive_project" title="Archive project" aria-label="Archive project">🗂</button>
             </div>
+            <!-- Project dashboard (collapsible, shown only when a project is active) -->
             <section class="project-dashboard" id="project-dashboard">
               <h4 class="project-dashboard-title" data-i18n="sidebar.project_dashboard">Project dashboard</h4>
               <div class="project-dashboard-row">
@@ -65,18 +73,11 @@
               </div>
               <div class="project-dashboard-stats" id="project-dashboard-stats"></div>
             </section>
-            <button class="new-chat icon-only-btn" id="new-chat-btn" data-i18n-title="sidebar.new_chat" title="New chat" aria-label="New chat"><span class="new-chat-icon" aria-hidden="true">✚</span></button>
-            <input id="conversation-search" class="conversation-search" type="search" data-i18n-placeholder="sidebar.search_placeholder" placeholder="Search conversations" aria-label="Search conversations">
-            <div class="tag-row">
-              <select id="conversation-tag-filter" class="project-filter" aria-label="Tag filter">
-                <option value="0" data-i18n="sidebar.tag_filter_all">All tags</option>
-              </select>
-              <button class="icon-btn" id="new-tag-btn" data-i18n-title="sidebar.create_tag" title="Create tag" aria-label="Create tag">🏷</button>
-            </div>
-            <section class="sidebar-attachments">
-              <h4 class="sidebar-attachments-title" data-i18n="sidebar.attachments">Attachments</h4>
-              <div class="attachment-list" id="attachment-list"></div>
-            </section>
+            <!-- Hidden elements kept for JS compatibility (tags, attachments) -->
+            <select id="conversation-tag-filter" style="display:none" aria-hidden="true"></select>
+            <button id="new-tag-btn" style="display:none" aria-hidden="true"></button>
+            <div class="attachment-list" id="attachment-list" style="display:none"></div>
+            <!-- Conversation list -->
             <div class="conversation-list" id="conversation-list"></div>
           </aside>
           <div class="sidebar-resizer" id="sidebar-resizer" title="Resize sidebar"></div>

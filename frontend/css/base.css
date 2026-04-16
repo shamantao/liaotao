@@ -181,8 +181,79 @@ body {
 .conversation-row-actions {
   display: inline-flex;
   gap: 0.25rem;
+  position: relative;
 }
 
+/* ── Conversation contextual menu ─────────────────────────────────── */
+.conv-menu-btn {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 7px;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  opacity: 0;
+  transition: opacity 120ms ease, color 120ms ease;
+}
+
+.conversation-item:hover .conv-menu-btn,
+.conversation-item.active .conv-menu-btn,
+.conversation-item.menu-open .conv-menu-btn {
+  opacity: 1;
+}
+
+.conv-menu-btn:hover {
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.conv-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 200;
+  background: #1a2e45;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 160px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.conv-menu-item {
+  border: none;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  padding: 0.42rem 0.7rem;
+  border-radius: 7px;
+  font-size: 0.84rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.conv-menu-item:hover {
+  background: rgba(62, 142, 126, 0.18);
+  color: var(--text);
+}
+
+.conv-menu-item.danger {
+  color: var(--danger);
+}
+
+.conv-menu-item.danger:hover {
+  background: rgba(204, 107, 100, 0.18);
+}
+
+/* Legacy button classes (kept for rename inline mode) */
 .conversation-rename-btn:hover {
   color: var(--accent);
   border-color: var(--border);
@@ -204,14 +275,7 @@ body {
   font-size: 0.82rem;
 }
 
-.conversation-item:hover .conversation-delete-btn,
-.conversation-item.active .conversation-delete-btn,
-.conversation-item:hover .conversation-rename-btn,
-.conversation-item.active .conversation-rename-btn {
-  opacity: 1;
-}
-
-/* ── Conversation tag pills ─────────────────────────────────────────── */
+/* ── Sidebar ───────────────────────────────────────────────────────── */
 .conv-tags-row {
   display: flex;
   flex-wrap: wrap;
@@ -237,12 +301,6 @@ body {
   font-size: 0.62rem;
   color: var(--text-dim);
   opacity: 0.7;
-}
-
-/* Show export button on hover / active, same as rename/delete */
-.conversation-item:hover .conversation-export-btn,
-.conversation-item.active .conversation-export-btn {
-  opacity: 1;
 }
 
 /* ── Sidebar ───────────────────────────────────────────────────────── */
@@ -271,6 +329,12 @@ body {
   gap: 0.4rem;
 }
 
+.sidebar-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
 .sidebar h3 {
   margin: 0;
   font-size: 0.95rem;
@@ -296,10 +360,9 @@ body {
   gap: 0.35rem;
 }
 
+/* tag-row hidden in redesign — kept for JS compat */
 .tag-row {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
+  display: none;
 }
 
 .project-dashboard {
@@ -385,16 +448,16 @@ body {
 }
 
 .sidebar button.new-chat {
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   border: 1px solid rgba(62, 142, 126, 0.3);
   padding: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   font-weight: 600;
   color: #f6f2e6;
   background: linear-gradient(90deg, var(--primary), var(--accent));
   cursor: pointer;
-  box-shadow: 0 8px 22px rgba(11, 20, 30, 0.28);
+  box-shadow: 0 4px 12px rgba(11, 20, 30, 0.28);
 }
 
 .new-chat-icon {
@@ -559,7 +622,6 @@ body {
 /* ── Sidebar collapsed state ───────────────────────────────────────── */
 .app-shell.sidebar-collapsed .sidebar h3,
 .app-shell.sidebar-collapsed .project-row,
-.app-shell.sidebar-collapsed .tag-row,
 .app-shell.sidebar-collapsed .conversation-item .label,
 .app-shell.sidebar-collapsed .conversation-search,
 .app-shell.sidebar-collapsed .conversation-main,
@@ -569,12 +631,6 @@ body {
 
 .app-shell.sidebar-collapsed .sidebar-resizer {
   display: none;
-}
-
-.app-shell.sidebar-collapsed .new-chat {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
 }
 
 /* ── Keyframes ─────────────────────────────────────────────────────── */

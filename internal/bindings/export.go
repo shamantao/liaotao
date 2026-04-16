@@ -1,7 +1,7 @@
 /*
   export.go -- Conversation and project export bindings (EXP-01 to EXP-05 / CONV2-03).
   Supports Markdown and JSON formats for single conversation or all conversations
-  in a project. Files are written to the user's home directory ~/liaotao-exports/.
+  in a project. The user chooses the destination via a native OS save-file dialog.
 */
 
 package bindings
@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -43,7 +42,8 @@ type ExportResult struct {
 	ItemCount int    `json:"item_count"`
 }
 
-// ExportConversation exports a single conversation to a file and returns its path.
+// ExportConversation opens a native save-file dialog and exports one conversation.
+// Returns ExportResult with an empty FilePath when the user cancels the dialog.
 func (s *Service) ExportConversation(ctx context.Context, payload ExportConversationPayload) (ExportResult, error) {
 	if payload.ConversationID <= 0 {
 		return ExportResult{}, fmt.Errorf("conversation_id must be > 0")
@@ -66,32 +66,32 @@ func (s *Service) ExportConversation(ctx context.Context, payload ExportConversa
 		convTitle = fmt.Sprintf("conversation-%d", payload.ConversationID)
 	}
 
-	outDir, err := ensureExportDir()
+	format := normalizeFormat(payload.Format)
+	ext, displayName, filterPattern := formatMeta(format)
+	ts := time.Now().Format("20060102-150405")
+	slug := sanitizeFilename(convTitle)
+	suggestedName := fmt.Sprintf("%s-%s.%s", slug, ts, ext)
+
+	outPath, err := s.promptSavePath(suggestedName, displayName, filterPattern)
 	if err != nil {
 		return ExportResult{}, err
 	}
+	if outPath == "" {
+		// User cancelled the dialog.
+		return ExportResult{Format: string(format)}, nil
+	}
 
-	ts := time.Now().Format("20060102-150405")
-	slug := sanitizeFilename(convTitle)
-	format := normalizeFormat(payload.Format)
-
-	var (
-		content []byte
-		ext     string
-	)
+	var content []byte
 	switch format {
 	case ExportFormatJSON:
-		ext = "json"
 		content, err = marshalConversationJSON(payload.ConversationID, convTitle, convModel, msgs)
 	default:
-		ext = "md"
 		content = marshalConversationMarkdown(convTitle, convModel, msgs)
 	}
 	if err != nil {
 		return ExportResult{}, err
 	}
 
-	outPath := filepath.Join(outDir, fmt.Sprintf("%s-%s.%s", slug, ts, ext))
 	if err := os.WriteFile(outPath, content, 0o644); err != nil {
 		return ExportResult{}, fmt.Errorf("write export: %w", err)
 	}
@@ -103,8 +103,7 @@ func (s *Service) ExportConversation(ctx context.Context, payload ExportConversa
 	}, nil
 }
 
-// ExportProject exports all conversations in a project into a single JSON or
-// Markdown file (one section per conversation).
+// ExportProject opens a native save-file dialog and exports all conversations in a project.
 func (s *Service) ExportProject(ctx context.Context, payload ExportProjectPayload) (ExportResult, error) {
 	if payload.ProjectID <= 0 {
 		return ExportResult{}, fmt.Errorf("project_id must be > 0")
@@ -115,15 +114,11 @@ func (s *Service) ExportProject(ctx context.Context, payload ExportProjectPayloa
 		return ExportResult{}, fmt.Errorf("list conversations: %w", err)
 	}
 
-	outDir, err := ensureExportDir()
-	if err != nil {
-		return ExportResult{}, err
-	}
-
 	format := normalizeFormat(payload.Format)
+	ext, displayName, filterPattern := formatMeta(format)
 	ts := time.Now().Format("20060102-150405")
 
-	// Fetch project name for the filename.
+	// Fetch project name for the suggested filename.
 	var projName string
 	_ = s.db.QueryRowContext(ctx,
 		`SELECT name FROM projects WHERE id = ?`, payload.ProjectID,
@@ -131,7 +126,15 @@ func (s *Service) ExportProject(ctx context.Context, payload ExportProjectPayloa
 	if projName == "" {
 		projName = fmt.Sprintf("project-%d", payload.ProjectID)
 	}
-	slug := sanitizeFilename(projName)
+	suggestedName := fmt.Sprintf("%s-%s.%s", sanitizeFilename(projName), ts, ext)
+
+	outPath, err := s.promptSavePath(suggestedName, displayName, filterPattern)
+	if err != nil {
+		return ExportResult{}, err
+	}
+	if outPath == "" {
+		return ExportResult{Format: string(format)}, nil
+	}
 
 	type convExport struct {
 		ID       int64            `json:"id"`
@@ -145,12 +148,12 @@ func (s *Service) ExportProject(ctx context.Context, payload ExportProjectPayloa
 	var jsonExports []convExport
 
 	for _, conv := range convs {
-		msgs, err := s.ListMessages(ctx, ListMessagesPayload{
+		msgs, msgErr := s.ListMessages(ctx, ListMessagesPayload{
 			ConversationID: conv.ID,
 			Limit:          10000,
 		})
-		if err != nil {
-			return ExportResult{}, fmt.Errorf("list messages for conv %d: %w", conv.ID, err)
+		if msgErr != nil {
+			return ExportResult{}, fmt.Errorf("list messages for conv %d: %w", conv.ID, msgErr)
 		}
 		totalMessages += len(msgs)
 
@@ -167,23 +170,17 @@ func (s *Service) ExportProject(ctx context.Context, payload ExportProjectPayloa
 		}
 	}
 
-	var (
-		content []byte
-		ext     string
-	)
+	var content []byte
 	switch format {
 	case ExportFormatJSON:
-		ext = "json"
 		content, err = json.MarshalIndent(jsonExports, "", "  ")
 		if err != nil {
 			return ExportResult{}, err
 		}
 	default:
-		ext = "md"
 		content = []byte(sb.String())
 	}
 
-	outPath := filepath.Join(outDir, fmt.Sprintf("%s-%s.%s", slug, ts, ext))
 	if err := os.WriteFile(outPath, content, 0o644); err != nil {
 		return ExportResult{}, fmt.Errorf("write export: %w", err)
 	}
@@ -197,16 +194,35 @@ func (s *Service) ExportProject(ctx context.Context, payload ExportProjectPayloa
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
-func ensureExportDir() (string, error) {
-	home, err := os.UserHomeDir()
+// promptSavePath shows a native OS save-file dialog and returns the chosen path.
+// Returns ("", nil) when the user cancels. Falls back to ~/Downloads/<name> if
+// no Wails application instance is available (e.g. unit tests).
+func (s *Service) promptSavePath(suggestedName, filterDisplayName, filterPattern string) (string, error) {
+	if s.app == nil {
+		// Fallback for tests or headless mode: use ~/Downloads.
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("home dir: %w", err)
+		}
+		return home + "/Downloads/" + suggestedName, nil
+	}
+
+	chosen, err := s.app.Dialog.SaveFile().
+		SetFilename(suggestedName).
+		AddFilter(filterDisplayName, filterPattern).
+		PromptForSingleSelection()
 	if err != nil {
-		return "", fmt.Errorf("home dir: %w", err)
+		return "", fmt.Errorf("save dialog: %w", err)
 	}
-	dir := filepath.Join(home, "liaotao-exports")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return "", fmt.Errorf("create export dir: %w", err)
+	return chosen, nil
+}
+
+// formatMeta returns (extension, human label, glob pattern) for a given format.
+func formatMeta(f ExportFormat) (ext, displayName, filterPattern string) {
+	if f == ExportFormatJSON {
+		return "json", "JSON file", "*.json"
 	}
-	return dir, nil
+	return "md", "Markdown file", "*.md"
 }
 
 func normalizeFormat(f ExportFormat) ExportFormat {

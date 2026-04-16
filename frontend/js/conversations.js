@@ -450,6 +450,9 @@ export function renderConversationList() {
     return;
   }
 
+  // Close any open context menu when re-rendering.
+  closeAllConvMenus();
+
   const grouped = groupConversations(appState.conversations);
   grouped.forEach((groupItems, groupName) => {
     if (groupItems.length === 0) return;
@@ -461,23 +464,20 @@ export function renderConversationList() {
     groupItems.forEach((conv) => {
       const row = document.createElement("div");
       row.className = `conversation-item${conv.id === appState.activeConversationId ? " active" : ""}`;
-      const tagPills = (conv.tags || []).map((tag) =>
-        `<span class="conv-tag-pill" style="background:${escapeHTML(tag.color)}" title="${escapeHTML(tag.name)}">${escapeHTML(tag.name)}</span>`
-      ).join("");
-      const tokenBadge = conv.tokenCount > 0
-        ? `<span class="conv-token-badge" title="${t("sidebar.token_count_title")}">~${formatTokenCount(conv.tokenCount)}</span>`
-        : "";
       row.innerHTML = `
         <span class="dot">${localizeConversationTitle(conv.title, conv.id).slice(0, 1).toUpperCase()}</span>
         <div class="conversation-main">
           <span class="label">${escapeHTML(localizeConversationTitle(conv.title, conv.id))}</span>
-          <span class="conversation-meta">${formatConversationDateTime(conv.updatedAt)}${tokenBadge}</span>
-          ${tagPills ? `<span class="conv-tags-row">${tagPills}</span>` : ""}
+          <span class="conversation-meta">${formatConversationDateTime(conv.updatedAt)}</span>
         </div>
         <div class="conversation-row-actions">
-          <button class="conversation-export-btn icon-only-btn" type="button" title="${t("sidebar.export_conversation")}" aria-label="${t("sidebar.export_conversation")}">⬇</button>
-          <button class="conversation-rename-btn icon-only-btn" type="button" title="${t("sidebar.rename_save")}" aria-label="${t("sidebar.rename_save")}">✎</button>
-          <button class="conversation-delete-btn icon-only-btn" type="button" title="${t("sidebar.delete_title")}" aria-label="${t("sidebar.delete_title")}">🗑</button>
+          <button class="conv-menu-btn icon-only-btn" type="button" title="${t("sidebar.more_actions")}" aria-label="${t("sidebar.more_actions")}">⋯</button>
+          <div class="conv-menu" role="menu" hidden>
+            <button class="conv-menu-item conv-menu-rename" data-i18n="sidebar.rename_action">${t("sidebar.rename_action")}</button>
+            <button class="conv-menu-item conv-menu-export-md">${t("sidebar.export_md")}</button>
+            <button class="conv-menu-item conv-menu-export-json">${t("sidebar.export_json")}</button>
+            <button class="conv-menu-item conv-menu-delete danger">${t("sidebar.delete_action")}</button>
+          </div>
         </div>
       `;
 
@@ -486,40 +486,80 @@ export function renderConversationList() {
         await activateConversation(conv);
       };
 
-      const exportBtn = row.querySelector(".conversation-export-btn");
-      const renameBtn = row.querySelector(".conversation-rename-btn");
-      const deleteBtn = row.querySelector(".conversation-delete-btn");
+      const menuBtn = row.querySelector(".conv-menu-btn");
+      const menu = row.querySelector(".conv-menu");
 
-      if (exportBtn) {
-        exportBtn.addEventListener("click", async (event) => {
-          event.stopPropagation();
-          try {
-            const result = await bridge.callService("ExportConversation", {
-              conversation_id: conv.id,
-              format: "markdown",
-            });
-            els.status.textContent = t("sidebar.export_done", { path: result.file_path || "" });
-          } catch (err) {
-            els.status.textContent = `export failed: ${String(err && err.message ? err.message : err)}`;
-          }
-        });
-      }
-      renameBtn.addEventListener("click", (event) => {
+      menuBtn.addEventListener("click", (event) => {
         event.stopPropagation();
+        const isOpen = !menu.hidden;
+        closeAllConvMenus();
+        if (!isOpen) {
+          menu.hidden = false;
+          row.classList.add("menu-open");
+        }
+      });
+
+      row.querySelector(".conv-menu-rename").addEventListener("click", (event) => {
+        event.stopPropagation();
+        closeAllConvMenus();
         startRenameConversation(row, conv);
       });
 
-      deleteBtn.addEventListener("click", (event) => {
+      row.querySelector(".conv-menu-export-md").addEventListener("click", async (event) => {
         event.stopPropagation();
-        inlineConfirm(deleteBtn, async () => {
-          await deleteConversation(conv.id);
-        });
+        closeAllConvMenus();
+        try {
+          const result = await bridge.callService("ExportConversation", {
+            conversation_id: conv.id,
+            format: "markdown",
+          });
+          if (result && result.file_path) {
+            els.status.textContent = t("sidebar.export_done", { path: result.file_path });
+          }
+        } catch (err) {
+          els.status.textContent = `export failed: ${String(err && err.message ? err.message : err)}`;
+        }
+      });
+
+      row.querySelector(".conv-menu-export-json").addEventListener("click", async (event) => {
+        event.stopPropagation();
+        closeAllConvMenus();
+        try {
+          const result = await bridge.callService("ExportConversation", {
+            conversation_id: conv.id,
+            format: "json",
+          });
+          if (result && result.file_path) {
+            els.status.textContent = t("sidebar.export_done", { path: result.file_path });
+          }
+        } catch (err) {
+          els.status.textContent = `export failed: ${String(err && err.message ? err.message : err)}`;
+        }
+      });
+
+      row.querySelector(".conv-menu-delete").addEventListener("click", (event) => {
+        event.stopPropagation();
+        closeAllConvMenus();
+        if (!window.confirm(t("sidebar.confirm_deletion"))) return;
+        deleteConversation(conv.id);
       });
 
       section.appendChild(row);
     });
 
     els.conversationList.appendChild(section);
+  });
+
+  // Close open menus when clicking elsewhere.
+  document.addEventListener("click", closeAllConvMenus, { once: true });
+}
+
+function closeAllConvMenus() {
+  document.querySelectorAll(".conv-menu").forEach((m) => {
+    m.hidden = true;
+  });
+  document.querySelectorAll(".conversation-item.menu-open").forEach((r) => {
+    r.classList.remove("menu-open");
   });
 }
 

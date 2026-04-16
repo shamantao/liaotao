@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // Service centralizes backend methods exposed to the frontend.
@@ -21,6 +23,7 @@ type Service struct {
 	cancelMu     sync.Mutex
 	cancels      map[string]context.CancelFunc
 	allowedRoots []string // path sandbox for built-in read_file tool
+	app          *application.App
 }
 
 // NewService creates the binding service shared by all MVP domains.
@@ -32,6 +35,11 @@ func NewService(db *sql.DB, allowedRoots ...string) *Service {
 		cancels:      make(map[string]context.CancelFunc),
 		allowedRoots: allowedRoots,
 	}
+}
+
+// SetApp provides the Wails application instance, enabling native OS dialogs.
+func (s *Service) SetApp(app *application.App) {
+	s.app = app
 }
 
 // Health returns basic runtime status used by UI startup checks.
