@@ -473,10 +473,11 @@ export function renderConversationList() {
         <div class="conversation-row-actions">
           <button class="conv-menu-btn icon-only-btn" type="button" title="${t("sidebar.more_actions")}" aria-label="${t("sidebar.more_actions")}">⋯</button>
           <div class="conv-menu" role="menu" hidden>
-            <button class="conv-menu-item conv-menu-rename" data-i18n="sidebar.rename_action">${t("sidebar.rename_action")}</button>
-            <button class="conv-menu-item conv-menu-export-md">${t("sidebar.export_md")}</button>
-            <button class="conv-menu-item conv-menu-export-json">${t("sidebar.export_json")}</button>
-            <button class="conv-menu-item conv-menu-delete danger">${t("sidebar.delete_action")}</button>
+            <button class="conv-menu-item conv-menu-rename" title="${t("sidebar.rename_action")}">✎ ${t("sidebar.rename_action")}</button>
+            <button class="conv-menu-item conv-menu-export-md" title="${t("sidebar.export_md")}">⬇ .md</button>
+            <button class="conv-menu-item conv-menu-export-json" title="${t("sidebar.export_json")}">⬇ .json</button>
+            <div class="conv-menu-sep"></div>
+            <button class="conv-menu-item conv-menu-delete danger" title="${t("sidebar.delete_action")}">🗑 ${t("sidebar.delete_action")}</button>
           </div>
         </div>
       `;

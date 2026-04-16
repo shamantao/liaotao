@@ -212,20 +212,25 @@ body {
   border-color: var(--border);
 }
 
+/* hidden attribute must win over display:flex */
+.conv-menu[hidden] {
+  display: none !important;
+}
+
 .conv-menu {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 4px);
   right: 0;
-  z-index: 200;
+  z-index: 300;
   background: #1a2e45;
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0.3rem;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  min-width: 160px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  gap: 0.1rem;
+  min-width: 130px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
 }
 
 .conv-menu-item {
@@ -233,11 +238,14 @@ body {
   background: transparent;
   color: var(--text);
   text-align: left;
-  padding: 0.42rem 0.7rem;
+  padding: 0.38rem 0.6rem;
   border-radius: 7px;
-  font-size: 0.84rem;
+  font-size: 0.9rem;
   cursor: pointer;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .conv-menu-item:hover {
@@ -251,6 +259,12 @@ body {
 
 .conv-menu-item.danger:hover {
   background: rgba(204, 107, 100, 0.18);
+}
+
+.conv-menu-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 0.2rem 0.4rem;
 }
 
 /* Legacy button classes (kept for rename inline mode) */
@@ -316,7 +330,8 @@ body {
 .sidebar {
   width: 100%;
   padding: 0.8rem;
-  overflow: hidden;
+  overflow: visible;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
@@ -466,11 +481,12 @@ body {
 }
 
 /* ── Conversation list ─────────────────────────────────────────────── */
+/* conversation-list must NOT clip the absolute-positioned .conv-menu dropdowns */
 .conversation-list {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
-  overflow-y: auto;
+  overflow: visible;
   min-height: 0;
   padding-right: 4px;
 }
