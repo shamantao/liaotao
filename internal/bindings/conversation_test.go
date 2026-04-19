@@ -366,6 +366,63 @@ func TestConversation_UpdateConversationSettings(t *testing.T) {
 	}
 }
 
+func TestConversation_AssignConversationGroup(t *testing.T) {
+	ctx := context.Background()
+	database := newConversationTestDB(t)
+	svc := NewService(database)
+
+	group, err := svc.CreateProject(ctx, CreateProjectPayload{Name: "Group Alpha"})
+	if err != nil {
+		t.Fatalf("CreateProject: %v", err)
+	}
+
+	conv, err := svc.CreateConversation(ctx, CreateConversationPayload{Title: "Attach me", ProviderID: 0, Model: "gpt-4o-mini"})
+	if err != nil {
+		t.Fatalf("CreateConversation: %v", err)
+	}
+
+	updated, err := svc.AssignConversationGroup(ctx, AssignConversationGroupPayload{
+		ConversationID: conv.ID,
+		ProjectID:      group.ID,
+	})
+	if err != nil {
+		t.Fatalf("AssignConversationGroup: %v", err)
+	}
+	if updated.ProjectID != group.ID {
+		t.Fatalf("ProjectID = %d, want %d", updated.ProjectID, group.ID)
+	}
+	if updated.Project != "Group Alpha" {
+		t.Fatalf("Project = %q, want %q", updated.Project, "Group Alpha")
+	}
+
+	inGroup, err := svc.ListConversations(ctx, ListConversationsPayload{Limit: 20, ProjectID: group.ID})
+	if err != nil {
+		t.Fatalf("ListConversations by project: %v", err)
+	}
+	if len(inGroup) != 1 || inGroup[0].ID != conv.ID {
+		t.Fatalf("unexpected list in assigned group: %+v", inGroup)
+	}
+
+	backToDefault, err := svc.AssignConversationGroup(ctx, AssignConversationGroupPayload{
+		ConversationID: conv.ID,
+		ProjectID:      0,
+	})
+	if err != nil {
+		t.Fatalf("AssignConversationGroup default: %v", err)
+	}
+	if strings.EqualFold(backToDefault.Project, "Group Alpha") {
+		t.Fatalf("conversation should no longer belong to Group Alpha")
+	}
+
+	inGroup, err = svc.ListConversations(ctx, ListConversationsPayload{Limit: 20, ProjectID: group.ID})
+	if err != nil {
+		t.Fatalf("ListConversations by project after reset: %v", err)
+	}
+	if len(inGroup) != 0 {
+		t.Fatalf("expected empty assigned group after reset, got %d", len(inGroup))
+	}
+}
+
 // TestConversation_ProviderIDStoredAsInteger verifies that CreateConversation
 // stores a numeric provider_id FK and that ListConversations returns the
 // resolved provider name — not a raw string.

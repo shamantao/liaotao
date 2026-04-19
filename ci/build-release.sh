@@ -25,6 +25,10 @@ build_binary() {
   local out_name="liaotao"
   if [[ "$OS_NAME" == mingw* || "$OS_NAME" == msys* || "$OS_NAME" == cygwin* ]]; then
     out_name="liaotao.exe"
+    # Generate Windows resource (.syso) with embedded icon + manifest
+    echo "[INFO] Generating Windows resources (icon + manifest)"
+    go install github.com/tc-hib/go-winres@latest
+    go-winres make --in winres.json 2>/dev/null || true
   fi
   local out_path="$BIN_DIR/$out_name"
   echo "[INFO] Running go build -> $out_path"
@@ -46,7 +50,26 @@ package_portable() {
   if [[ "$OS_NAME" == "darwin" ]]; then
     local bin_path="$BIN_DIR/liaotao"
     if [[ -f "$bin_path" ]]; then
-      ditto -c -k --sequesterRsrc --keepParent "$bin_path" "$ARTIFACT_DIR/${base}.zip"
+      # Build macOS .app bundle
+      local app_dir="$BIN_DIR/liaotao.app"
+      local contents_dir="$app_dir/Contents"
+      local macos_dir="$contents_dir/MacOS"
+      local resources_dir="$contents_dir/Resources"
+      mkdir -p "$macos_dir" "$resources_dir"
+
+      cp "$bin_path" "$macos_dir/liaotao"
+      cp "$PROJECT_DIR/build/darwin/Info.plist" "$contents_dir/Info.plist"
+      cp "$PROJECT_DIR/build/darwin/icons.icns" "$resources_dir/icons.icns"
+
+      # Update version in Info.plist
+      if command -v plutil >/dev/null 2>&1; then
+        plutil -replace CFBundleShortVersionString -string "$VERSION" "$contents_dir/Info.plist"
+      fi
+
+      # Ad-hoc code sign to avoid Gatekeeper "unverified" error
+      codesign --force --deep --sign - "$app_dir" 2>/dev/null || echo "[WARN] Ad-hoc signing failed (non-fatal)"
+
+      ditto -c -k --sequesterRsrc --keepParent "$app_dir" "$ARTIFACT_DIR/${base}.zip"
       echo "[OK] Packaged: $ARTIFACT_DIR/${base}.zip"
       return
     fi

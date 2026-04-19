@@ -104,6 +104,13 @@ type RenameConversationPayload struct {
 	Title          string `json:"title"`
 }
 
+// AssignConversationGroupPayload assigns one conversation to a project/group.
+// project_id <= 0 means fallback to default project (unassigned in Groups UI).
+type AssignConversationGroupPayload struct {
+	ConversationID int64 `json:"conversation_id"`
+	ProjectID      int64 `json:"project_id"`
+}
+
 // UpdateConversationSettingsPayload updates provider/model/runtime generation settings.
 type UpdateConversationSettingsPayload struct {
 	ConversationID int64   `json:"conversation_id"`
@@ -355,7 +362,8 @@ func (s *Service) listConversationsWithQuery(ctx context.Context, query string, 
 	return items, nil
 }
 
-// RenameConversation updates title and refreshes updated_at for one conversation.
+// RenameConversation updates only the title — updated_at is preserved so ordering
+// reflects the last message activity, not metadata edits.
 func (s *Service) RenameConversation(ctx context.Context, payload RenameConversationPayload) (ConversationSummary, error) {
 	if payload.ConversationID <= 0 {
 		return ConversationSummary{}, fmt.Errorf("conversation id must be > 0")
@@ -367,8 +375,66 @@ func (s *Service) RenameConversation(ctx context.Context, payload RenameConversa
 
 	res, err := s.db.ExecContext(
 		ctx,
-		`UPDATE conversations SET title = ?, updated_at = datetime('now') WHERE id = ?`,
+		`UPDATE conversations SET title = ? WHERE id = ?`,
 		title,
+		payload.ConversationID,
+	)
+	if err != nil {
+		return ConversationSummary{}, err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return ConversationSummary{}, err
+	}
+	if affected == 0 {
+		return ConversationSummary{}, fmt.Errorf("conversation %d not found", payload.ConversationID)
+	}
+
+	item := ConversationSummary{}
+	err = s.db.QueryRowContext(
+		ctx,
+		`SELECT`+conversationSelectSQL+`
+		 FROM conversations c
+		 LEFT JOIN projects pr ON pr.id = c.project_id
+		 LEFT JOIN providers p ON p.id = c.provider_id
+		 WHERE c.id = ?`,
+		payload.ConversationID,
+	).Scan(&item.ID, &item.Title, &item.ProjectID, &item.Project, &item.ProviderID, &item.Provider, &item.Model, &item.Temperature, &item.MaxTokens, &item.SystemPrompt, &item.UpdatedAt, &item.TokenCount)
+	if err != nil {
+		return ConversationSummary{}, err
+	}
+	item.Tags = []TagItem{}
+
+	return item, nil
+}
+
+// AssignConversationGroup re-assigns one conversation to a project/group.
+// project_id <= 0 maps to default project.
+func (s *Service) AssignConversationGroup(ctx context.Context, payload AssignConversationGroupPayload) (ConversationSummary, error) {
+	if payload.ConversationID <= 0 {
+		return ConversationSummary{}, fmt.Errorf("conversation id must be > 0")
+	}
+
+	targetProjectID := payload.ProjectID
+	if targetProjectID <= 0 {
+		var err error
+		targetProjectID, err = s.getDefaultProjectID(ctx)
+		if err != nil {
+			return ConversationSummary{}, err
+		}
+	} else {
+		if _, err := s.getProjectByID(ctx, targetProjectID); err != nil {
+			return ConversationSummary{}, err
+		}
+	}
+
+	res, err := s.db.ExecContext(
+		ctx,
+		`UPDATE conversations
+		 SET project_id = ?,
+		     updated_at = datetime('now')
+		 WHERE id = ?`,
+		targetProjectID,
 		payload.ConversationID,
 	)
 	if err != nil {

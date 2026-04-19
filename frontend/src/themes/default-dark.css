@@ -1,0 +1,9 @@
+/*
+  default-dark.css — Default dark theme for liaotao.
+  Imports primitive tokens and semantic mappings.
+  This file is loaded by the theme-loader store.
+  Theme authors can create alternative files following this structure.
+*/
+
+@import './tokens.css';
+@import './semantic.css';

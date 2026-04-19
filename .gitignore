@@ -41,7 +41,6 @@ ehthumbs.db
 
 # docs (local only — contains proprietary roadmap)
 docs/backlog-liaotao.md
-docs/PRD-liaotao.md
 
 # kDrive / cloud-sync conflict files (created on simultaneous edit from two machines)
 *_conflict_*

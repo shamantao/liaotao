@@ -1,0 +1,54 @@
+/*
+  semantic.css — Semantic design tokens for liaotao.
+  Maps primitive tokens from tokens.css to purpose-driven names.
+  Components reference ONLY these semantic tokens via var().
+  Theme authors can override these to remap the visual identity.
+*/
+
+:root {
+  /* ── Surfaces ────────────────────────────────────────────────────── */
+  --surface-primary: var(--color-ink-800);
+  --surface-secondary: var(--color-ink-900);
+  --surface-elevated: var(--color-midnight-500);
+  --surface-input: var(--color-midnight-700);
+  --surface-block: #1a2332;
+  --surface-block-head: #1a2636;
+  --surface-menu: #151f2c;
+  --surface-item: #1e2d3d;
+  --surface-item-hover: #253d52;
+  --surface-item-active: var(--color-jade-700);
+  --surface-badge: var(--color-midnight-300);
+  --surface-active: #23435f;
+  --surface-code: var(--color-midnight-800);
+  --surface-code-border: #28425e;
+  --surface-tab: var(--color-ink-600);
+  --surface-tab-hover: var(--color-ink-500);
+  --surface-soft: #26425f;
+
+  /* ── Text ────────────────────────────────────────────────────────── */
+  --text-primary: var(--color-beige-100);
+  --text-secondary: var(--color-beige-200);
+  --text-muted: var(--color-beige-300);
+
+  /* ── Accent ──────────────────────────────────────────────────────── */
+  --accent-default: var(--color-jade-500);
+  --accent-hover: var(--color-jade-400);
+
+  /* ── Primary ─────────────────────────────────────────────────────── */
+  --primary-default: var(--color-midnight-500);
+  --primary-hover: var(--color-midnight-400);
+
+  /* ── Borders ─────────────────────────────────────────────────────── */
+  --border-default: #2f4f6b;
+  --border-subtle: var(--color-ink-400);
+
+  /* ── Status ──────────────────────────────────────────────────────── */
+  --danger-default: var(--color-danger);
+  --warning-default: var(--color-warning);
+  --ok-default: var(--color-ok);
+
+  /* ── Layout ──────────────────────────────────────────────────────── */
+  --sidebar-width: 290px;
+  --chat-font-size: 1rem;
+  --chat-icon-size: 26px;
+}

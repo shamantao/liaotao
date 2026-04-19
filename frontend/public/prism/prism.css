@@ -1,0 +1,28 @@
+/* prism.css -- vendored local style fallback for code blocks. */
+code[class*="language-"],
+pre[class*="language-"] {
+  color: #dfefff;
+  background: none;
+  font-family: "SFMono-Regular", Menlo, monospace;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: #8ba1b5;
+}
+
+.token.keyword {
+  color: #7cd6c4;
+}
+
+.token.string {
+  color: #f2cb85;
+}
+
+.token.function {
+  color: #9ecbff;
+}

@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## [0.4.0] - 2026-04-19
+
+### Added
+- **Svelte 5 migration (SVELTE-01→17)**: Complete frontend rewrite from vanilla JS to Svelte 5 with runes API ($state, $props, $derived, $effect). 7 test files, 66 unit tests.
+- **UI-01**: Settings > General reorganized into 4 visual groups (General / Display / Updates / System) with accent-colored headers and border separators.
+- **UI-02**: Conversation history grouped by collapsible date hierarchy (year → month → day). Auto-expands most recent date group. Extracted `ConversationItem.svelte` sub-component.
+- **UI-03**: Windows exe icon embedding via go-winres (.syso resource files + CI integration).
+- **UI-04**: macOS `.app` bundle with `Info.plist`, icon, and ad-hoc codesign. Fixes Gatekeeper "not verified" error.
+- **PLUG-09**: Plugin runtime engine — loads ES module plugins via Blob URL + dynamic import, manages lifecycle (`onInit` hook), exposes reactive `topbarActions` store for topbar status indicators.
+- **PLUG-09**: aitao connector plugin (`aitao-connect.plugin.js`) — auto-configures provider and MCP server, polls connectivity every 30s, displays topbar indicator (green/orange/red).
+- Plugin API extended with `onInit(ctx)` hook providing `bridge`, `registerTopbarAction()`, `updateTopbarAction()`, and managed `setInterval()`.
+
+### Changed
+- Topbar now renders plugin status indicators between tabs and "ready" label.
+- `ci/build-release.sh`: Windows go-winres step + macOS .app bundle creation + ad-hoc codesign.
+- `plugins/template.plugin.example.js`: updated with `onInit` hook documentation and topbar API reference.
+- `docs/backlog-liaotao.md`: v2.8 UI Polish stories marked complete (UI-01..04, PLUG-09).
+
+### Technical
+- Vite 6.4.2 build: 153 modules, ~113 KB JS (gzip ~38 KB), ~33 KB CSS (gzip ~5.5 KB).
+- Vitest 4.1.4: 66 tests across 7 files, all passing.
+- Three-layer CSS token architecture (tokens → semantic → theme).
+
 ## [0.3.0] - 2026-04-13
 
 ### Added

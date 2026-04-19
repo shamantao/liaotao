@@ -1,0 +1,219 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1000" font-family="Inter, system-ui, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6a7f90"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#cc6b64"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#f4b266"/>
+    </marker>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="1000" fill="#0f1923" rx="16"/>
+
+  <!-- Title -->
+  <text x="700" y="40" text-anchor="middle" font-size="22" font-weight="700" fill="#E9E3D5">liaotao — Carte des dépendances frontend</text>
+  <text x="700" y="62" text-anchor="middle" font-size="13" fill="#6a7f90">Rouge = couplage fort | Orange = couplage moyen | Gris = couplage faible (sain)</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- LAYER 0: CORE (bottom) -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <rect x="40" y="830" width="1320" height="150" rx="14" fill="#12202e" stroke="#1e3d59" stroke-width="1.5"/>
+  <text x="60" y="860" font-size="14" font-weight="700" fill="#45998A" letter-spacing="2">CORE — Modules indépendants (0 import interne)</text>
+
+  <!-- bridge.js -->
+  <rect x="80" y="880" width="150" height="70" rx="10" fill="#1a2e45" stroke="#45998A" stroke-width="2" filter="url(#shadow)"/>
+  <text x="155" y="910" text-anchor="middle" font-size="14" font-weight="600" fill="#E9E3D5">bridge.js</text>
+  <text x="155" y="930" text-anchor="middle" font-size="10" fill="#45998A">68 lignes · 8 dépendants</text>
+
+  <!-- i18n.js -->
+  <rect x="260" y="880" width="150" height="70" rx="10" fill="#1a2e45" stroke="#45998A" stroke-width="2" filter="url(#shadow)"/>
+  <text x="335" y="910" text-anchor="middle" font-size="14" font-weight="600" fill="#E9E3D5">i18n.js</text>
+  <text x="335" y="930" text-anchor="middle" font-size="10" fill="#45998A">152 lignes · 7 dépendants</text>
+
+  <!-- icons.js -->
+  <rect x="440" y="880" width="150" height="70" rx="10" fill="#1a2e45" stroke="#45998A" stroke-width="2" filter="url(#shadow)"/>
+  <text x="515" y="910" text-anchor="middle" font-size="14" font-weight="600" fill="#E9E3D5">icons.js</text>
+  <text x="515" y="930" text-anchor="middle" font-size="10" fill="#45998A">31 lignes · 4 dépendants</text>
+
+  <!-- errors.js -->
+  <rect x="620" y="880" width="150" height="70" rx="10" fill="#1a2e45" stroke="#45998A" stroke-width="2" filter="url(#shadow)"/>
+  <text x="695" y="910" text-anchor="middle" font-size="14" font-weight="600" fill="#E9E3D5">errors.js</text>
+  <text x="695" y="930" text-anchor="middle" font-size="10" fill="#45998A">101 lignes · 2 dépendants</text>
+
+  <!-- markdown.js -->
+  <rect x="800" y="880" width="150" height="70" rx="10" fill="#1a2e45" stroke="#45998A" stroke-width="2" filter="url(#shadow)"/>
+  <text x="875" y="910" text-anchor="middle" font-size="14" font-weight="600" fill="#E9E3D5">markdown.js</text>
+  <text x="875" y="930" text-anchor="middle" font-size="10" fill="#45998A">136 lignes · 2 dépendants</text>
+
+  <!-- plugins.js -->
+  <rect x="980" y="880" width="150" height="70" rx="10" fill="#1a2e45" stroke="#45998A" stroke-width="2" filter="url(#shadow)"/>
+  <text x="1055" y="910" text-anchor="middle" font-size="14" font-weight="600" fill="#E9E3D5">plugins.js</text>
+  <text x="1055" y="930" text-anchor="middle" font-size="10" fill="#45998A">195 lignes · 5 dépendants</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- PROBLEM ZONE: state.js (center, highlighted) -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <rect x="530" y="690" width="340" height="100" rx="14" fill="#2d1a1a" stroke="#cc6b64" stroke-width="3" filter="url(#shadow)"/>
+  <text x="700" y="725" text-anchor="middle" font-size="18" font-weight="700" fill="#cc6b64">state.js — GOD OBJECT</text>
+  <text x="700" y="748" text-anchor="middle" font-size="12" fill="#E9E3D5">202 lignes · 85 refs DOM · 25+ props appState</text>
+  <text x="700" y="768" text-anchor="middle" font-size="11" fill="#f4b266">⚠ 10 fichiers en dépendent — TOUT passe par ici</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- LAYER 1: FEATURE MODULES (middle) -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <rect x="40" y="420" width="1320" height="240" rx="14" fill="#121d28" stroke="#28425e" stroke-width="1"/>
+  <text x="60" y="450" font-size="14" font-weight="700" fill="#f4b266" letter-spacing="2">MODULES FONCTIONNELS — Dépendent de state + core</text>
+
+  <!-- providers.js -->
+  <rect x="80" y="470" width="180" height="80" rx="10" fill="#1a2636" stroke="#f4b266" stroke-width="2" filter="url(#shadow)"/>
+  <text x="170" y="500" text-anchor="middle" font-size="14" font-weight="600" fill="#E9E3D5">providers.js</text>
+  <text x="170" y="520" text-anchor="middle" font-size="10" fill="#f4b266">557 lignes · 18 exports</text>
+  <text x="170" y="536" text-anchor="middle" font-size="9" fill="#6a7f90">→ state, bridge, errors, i18n, icons, md</text>
+
+  <!-- chat.js -->
+  <rect x="290" y="470" width="180" height="80" rx="10" fill="#1a2636" stroke="#f4b266" stroke-width="2" filter="url(#shadow)"/>
+  <text x="380" y="500" text-anchor="middle" font-size="14" font-weight="600" fill="#E9E3D5">chat.js</text>
+  <text x="380" y="520" text-anchor="middle" font-size="10" fill="#f4b266">388 lignes · 14 exports</text>
+  <text x="380" y="536" text-anchor="middle" font-size="9" fill="#6a7f90">→ state, bridge, providers, md, i18n, icons</text>
+
+  <!-- mcp.js -->
+  <rect x="500" y="470" width="180" height="80" rx="10" fill="#1a2636" stroke="#45998A" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="590" y="500" text-anchor="middle" font-size="14" font-weight="600" fill="#E9E3D5">mcp.js</text>
+  <text x="590" y="520" text-anchor="middle" font-size="10" fill="#45998A">260 lignes · propres DOM refs</text>
+  <text x="590" y="536" text-anchor="middle" font-size="9" fill="#6a7f90">→ bridge, errors, i18n, icons (PAS state!)</text>
+
+  <!-- settings.js -->
+  <rect x="710" y="470" width="180" height="80" rx="10" fill="#1a2636" stroke="#f4b266" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="800" y="500" text-anchor="middle" font-size="14" font-weight="600" fill="#E9E3D5">settings.js</text>
+  <text x="800" y="520" text-anchor="middle" font-size="10" fill="#f4b266">163 lignes</text>
+  <text x="800" y="536" text-anchor="middle" font-size="9" fill="#6a7f90">→ state, bridge, i18n, updates</text>
+
+  <!-- updates.js -->
+  <rect x="920" y="470" width="180" height="80" rx="10" fill="#1a2636" stroke="#45998A" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="1010" y="500" text-anchor="middle" font-size="14" font-weight="600" fill="#E9E3D5">updates.js</text>
+  <text x="1010" y="520" text-anchor="middle" font-size="10" fill="#45998A">246 lignes</text>
+  <text x="1010" y="536" text-anchor="middle" font-size="9" fill="#6a7f90">→ state, bridge</text>
+
+  <!-- attachments.js -->
+  <rect x="1130" y="470" width="180" height="80" rx="10" fill="#1a2636" stroke="#45998A" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="1220" y="500" text-anchor="middle" font-size="14" font-weight="600" fill="#E9E3D5">attachments.js</text>
+  <text x="1220" y="520" text-anchor="middle" font-size="10" fill="#45998A">183 lignes</text>
+  <text x="1220" y="536" text-anchor="middle" font-size="9" fill="#6a7f90">→ state, bridge, i18n, plugins</text>
+
+  <!-- plugins_builtin / plugins_manager (small) -->
+  <rect x="80" y="580" width="160" height="55" rx="8" fill="#152030" stroke="#45998A" stroke-width="1" filter="url(#shadow)"/>
+  <text x="160" y="605" text-anchor="middle" font-size="12" font-weight="600" fill="#E9E3D5">plugins_builtin</text>
+  <text x="160" y="622" text-anchor="middle" font-size="9" fill="#6a7f90">173 lignes · → state, plugins</text>
+
+  <rect x="270" y="580" width="160" height="55" rx="8" fill="#152030" stroke="#45998A" stroke-width="1" filter="url(#shadow)"/>
+  <text x="350" y="605" text-anchor="middle" font-size="12" font-weight="600" fill="#E9E3D5">plugins_manager</text>
+  <text x="350" y="622" text-anchor="middle" font-size="9" fill="#6a7f90">119 lignes · → state, i18n, plugins</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- PROBLEM ZONE 2: conversations.js (red, highlighted) -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <rect x="460" y="570" width="340" height="90" rx="14" fill="#2d1a1a" stroke="#cc6b64" stroke-width="3" filter="url(#shadow)"/>
+  <text x="630" y="600" text-anchor="middle" font-size="16" font-weight="700" fill="#cc6b64">conversations.js — MEGA MODULE</text>
+  <text x="630" y="622" text-anchor="middle" font-size="11" fill="#E9E3D5">1 275 lignes · 13 exports · 8 imports</text>
+  <text x="630" y="642" text-anchor="middle" font-size="10" fill="#f4b266">⚠ sidebar + groups + projects + tags + hierarchy + export</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- LAYER 2: ORCHESTRATOR (top) -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <rect x="40" y="90" width="1320" height="300" rx="14" fill="#0d1620" stroke="#1e3d59" stroke-width="1"/>
+  <text x="60" y="118" font-size="14" font-weight="700" fill="#cc6b64" letter-spacing="2">ORCHESTRATEUR — Point d'entrée unique (MONOLITHE)</text>
+
+  <!-- app.js -->
+  <rect x="420" y="140" width="560" height="100" rx="14" fill="#2d1a1a" stroke="#cc6b64" stroke-width="3" filter="url(#shadow)"/>
+  <text x="700" y="172" text-anchor="middle" font-size="20" font-weight="700" fill="#cc6b64">app.js — 454 lignes</text>
+  <text x="700" y="196" text-anchor="middle" font-size="12" fill="#E9E3D5">Importe 13 modules sur 16 · Init + tabs + sidebar + events</text>
+  <text x="700" y="216" text-anchor="middle" font-size="11" fill="#f4b266">⚠ Mélange orchestration, UI sidebar, event binding, tab logic</text>
+
+  <!-- CSS Files -->
+  <rect x="60" y="260" width="200" height="110" rx="10" fill="#1a1a2d" stroke="#667eea" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="160" y="288" text-anchor="middle" font-size="14" font-weight="600" fill="#667eea">CSS — 4 fichiers</text>
+  <text x="160" y="310" text-anchor="middle" font-size="11" fill="#E9E3D5">base.css   — 1 203 lignes</text>
+  <text x="160" y="326" text-anchor="middle" font-size="11" fill="#E9E3D5">chat.css   — 404 lignes</text>
+  <text x="160" y="342" text-anchor="middle" font-size="11" fill="#E9E3D5">settings.css — 501 lignes</text>
+  <text x="160" y="358" text-anchor="middle" font-size="11" fill="#E9E3D5">updates.css — 121 lignes</text>
+
+  <!-- index.html -->
+  <rect x="1100" y="260" width="230" height="110" rx="10" fill="#1a1a2d" stroke="#667eea" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="1215" y="288" text-anchor="middle" font-size="14" font-weight="600" fill="#667eea">index.html</text>
+  <text x="1215" y="310" text-anchor="middle" font-size="12" fill="#E9E3D5">111 IDs définis</text>
+  <text x="1215" y="330" text-anchor="middle" font-size="11" fill="#f4b266">85 capturés par state.js</text>
+  <text x="1215" y="350" text-anchor="middle" font-size="11" fill="#cc6b64">19 dupliqués dans mcp.js</text>
+  <text x="1215" y="368" text-anchor="middle" font-size="10" fill="#cc6b64">10 refs els.* MORTES</text>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- DEPENDENCY ARROWS -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+
+  <!-- app.js → state.js (red = critical coupling) -->
+  <line x1="700" y1="240" x2="700" y2="690" stroke="#cc6b64" stroke-width="2.5" stroke-dasharray="8,4" marker-end="url(#arrow-red)"/>
+
+  <!-- app.js → conversations.js (red) -->
+  <line x1="580" y1="240" x2="580" y2="570" stroke="#cc6b64" stroke-width="2" marker-end="url(#arrow-red)"/>
+
+  <!-- app.js → providers.js (orange) -->
+  <line x1="480" y1="240" x2="200" y2="470" stroke="#f4b266" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
+
+  <!-- app.js → chat.js (orange) -->
+  <line x1="520" y1="240" x2="380" y2="470" stroke="#f4b266" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
+
+  <!-- app.js → mcp, settings, updates (grey = OK) -->
+  <line x1="750" y1="240" x2="590" y2="470" stroke="#6a7f90" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="800" y1="240" x2="800" y2="470" stroke="#6a7f90" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="860" y1="240" x2="1010" y2="470" stroke="#6a7f90" stroke-width="1" marker-end="url(#arrow)"/>
+
+  <!-- conversations.js → chat.js (red = mutual awareness) -->
+  <line x1="500" y1="590" x2="420" y2="550" stroke="#cc6b64" stroke-width="2" marker-end="url(#arrow-red)"/>
+
+  <!-- conversations.js → providers.js (orange) -->
+  <line x1="480" y1="610" x2="240" y2="550" stroke="#f4b266" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
+
+  <!-- conversations.js → state.js (red) -->
+  <line x1="630" y1="660" x2="660" y2="690" stroke="#cc6b64" stroke-width="2" marker-end="url(#arrow-red)"/>
+
+  <!-- chat.js → providers.js (orange) -->
+  <line x1="310" y1="510" x2="260" y2="510" stroke="#f4b266" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
+
+  <!-- chat.js → state.js (orange) -->
+  <line x1="380" y1="550" x2="570" y2="720" stroke="#f4b266" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
+
+  <!-- providers.js → state.js (orange) -->
+  <line x1="200" y1="550" x2="560" y2="730" stroke="#f4b266" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
+
+  <!-- modules → core (grey = healthy) -->
+  <line x1="170" y1="550" x2="155" y2="880" stroke="#6a7f90" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#arrow)"/>
+  <line x1="380" y1="550" x2="335" y2="880" stroke="#6a7f90" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#arrow)"/>
+  <line x1="590" y1="550" x2="695" y2="880" stroke="#6a7f90" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#arrow)"/>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- LEGEND -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <rect x="290" y="260" width="780" height="110" rx="10" fill="#0d1620" stroke="#28425e" stroke-width="1"/>
+  <text x="310" y="288" font-size="13" font-weight="700" fill="#E9E3D5">Diagnostic — 3 problèmes structurels :</text>
+
+  <circle cx="325" cy="310" r="6" fill="#cc6b64"/>
+  <text x="340" y="315" font-size="12" fill="#E9E3D5">1. state.js = God Object (85 refs DOM + 25 props état partagé par 10 fichiers)</text>
+
+  <circle cx="325" cy="335" r="6" fill="#cc6b64"/>
+  <text x="340" y="340" font-size="12" fill="#E9E3D5">2. conversations.js = Méga-module (1 275 lignes, mélange sidebar + groups + projects + tags + export)</text>
+
+  <circle cx="325" cy="360" r="6" fill="#f4b266"/>
+  <text x="340" y="365" font-size="12" fill="#E9E3D5">3. app.js = orchestrateur trop chargé (454 lignes, mélange init + sidebar + tabs + events)</text>
+
+  <!-- Good module callout -->
+  <rect x="820" y="570" width="260" height="65" rx="8" fill="#0d2218" stroke="#45998A" stroke-width="1.5"/>
+  <text x="950" y="593" text-anchor="middle" font-size="12" font-weight="600" fill="#45998A">✓ BIEN ISOLÉ</text>
+  <text x="950" y="610" text-anchor="middle" font-size="11" fill="#E9E3D5">mcp.js — propres refs DOM</text>
+  <text x="950" y="625" text-anchor="middle" font-size="11" fill="#E9E3D5">N'importe PAS state.js</text>
+</svg>

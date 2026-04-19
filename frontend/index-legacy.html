@@ -1,0 +1,436 @@
+<!-- index.html -- Liaotao app shell wiring modular CSS/JS assets. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>liaotao</title>
+  <link rel="icon" type="image/svg+xml" href="./assets/logo-liaotao.svg">
+  <link rel="stylesheet" href="./css/base.css">
+  <link rel="stylesheet" href="./css/chat.css">
+  <link rel="stylesheet" href="./css/settings.css">
+  <link rel="stylesheet" href="./css/updates.css">
+  <link rel="stylesheet" href="./prism/prism.css">
+  <link rel="stylesheet" href="./katex/katex.min.css">
+</head>
+<body>
+  <div class="app-shell" id="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <img class="brand-logo" src="./assets/logo-liaotao.svg" alt="Liaotao logo">
+        <span class="brand-name">liaotao</span>
+      </div>
+      <nav class="tabs">
+        <button class="tab-btn active" data-tab="chat" data-i18n="nav.chat">Chat</button>
+        <button class="tab-btn" data-tab="settings" data-i18n="nav.settings">Settings</button>
+      </nav>
+      <div class="status" id="status" data-i18n="nav.status_ready">ready</div>
+    </header>
+
+    <!-- UPD-02: Update notification banner -->
+    <div class="update-banner" id="update-banner" hidden>
+      <div class="update-banner-inner">
+        <div class="update-banner-content">
+          <span class="update-banner-icon"><svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></span>
+          <span class="update-banner-text" data-i18n="updates.banner_text">A new version is available</span>
+          <button class="update-banner-link" id="update-banner-action" data-i18n="updates.banner_action">View Release</button>
+        </div>
+        <button class="update-banner-close" id="update-banner-close" data-i18n-title="updates.banner_close_title" title="Dismiss"><svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+      </div>
+    </div>
+
+    <section id="chat" class="tab-panel active">
+      <div class="chat-layout">
+        <div class="sidebar-wrap">
+          <aside class="sidebar">
+            <!-- Sidebar header: collapse toggle + new chat -->
+            <div class="sidebar-header">
+              <div class="sidebar-header-actions">
+                <button class="icon-btn" id="sidebar-toggle" title="Expand or collapse sidebar"><svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16"/><path d="M4 6h16"/><path d="M4 18h16"/></svg></button>
+                <button class="icon-btn new-chat" id="new-chat-btn" type="button" data-i18n-title="sidebar.new_chat" title="New chat" aria-label="New chat"><svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
+              </div>
+            </div>
+            <!-- Quick-action icon buttons — visible only in collapsed icon rail -->
+            <div class="sidebar-quick-btns">
+              <button class="icon-btn sidebar-quick-btn" id="sidebar-search-mini" data-i18n-title="sidebar.search_placeholder" title="Search" aria-label="Search"><svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></button>
+              <button class="icon-btn sidebar-quick-btn" id="sidebar-new-chat-mini" data-i18n-title="sidebar.new_chat" title="New chat" aria-label="New chat"><svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
+            </div>
+            <!-- Global search -->
+            <input id="conversation-search" class="conversation-search" type="search" data-i18n-placeholder="sidebar.search_placeholder" placeholder="Search conversations" aria-label="Search conversations">
+            <!-- Groups block -->
+            <section class="sidebar-block" id="groups-block">
+              <div class="sidebar-block-head">
+                <button class="sidebar-block-toggle" id="groups-toggle" type="button" aria-expanded="true" data-i18n-title="sidebar.groups" title="Groups" aria-label="Groups">
+                  <span class="om-icon" aria-hidden="true"><img class="om-svg-icon" src="./assets/openmoji/1F4C1.svg" alt=""></span>
+                  <span class="sidebar-block-label" data-i18n="sidebar.groups">Groups</span>
+                </button>
+                <button class="sidebar-block-menu-btn icon-only-btn" id="groups-head-menu-btn" type="button" data-i18n-title="sidebar.more_actions" title="More actions" aria-label="More actions"><svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+                <div class="sidebar-head-menu" id="groups-head-menu" hidden>
+                  <button class="sidebar-head-menu-item" id="groups-head-add" type="button">
+                    <span class="sidebar-head-menu-item-icon" aria-hidden="true"><img class="om-svg-icon" src="./assets/openmoji/2795.svg" alt=""></span>
+                    <span class="sidebar-head-menu-item-label" data-i18n="sidebar.new_group_action">Ajouter un groupe</span>
+                  </button>
+                  <button class="sidebar-head-menu-item" id="groups-head-export-md" type="button">
+                    <span class="sidebar-head-menu-item-icon" aria-hidden="true"><img class="om-svg-icon" src="./assets/openmoji/1F4E5.svg" alt=""></span>
+                    <span class="sidebar-head-menu-item-label" data-i18n="sidebar.export_group_md">Exporter groupe (.md)</span>
+                  </button>
+                  <button class="sidebar-head-menu-item" id="groups-head-export-json" type="button">
+                    <span class="sidebar-head-menu-item-icon" aria-hidden="true"><img class="om-svg-icon" src="./assets/openmoji/1F9FE.svg" alt=""></span>
+                    <span class="sidebar-head-menu-item-label" data-i18n="sidebar.export_group_json">Exporter groupe (.json)</span>
+                  </button>
+                </div>
+              </div>
+              <div class="sidebar-block-content" id="groups-content">
+                <div class="groups-list" id="groups-list"></div>
+              </div>
+            </section>
+            <!-- Conversations block -->
+            <section class="sidebar-block" id="conversations-block">
+              <div class="sidebar-block-head">
+                <button class="sidebar-block-toggle" id="conversations-toggle" type="button" aria-expanded="true" data-i18n-title="sidebar.conversations" title="Conversations" aria-label="Conversations">
+                  <span class="om-icon" aria-hidden="true"><img class="om-svg-icon" src="./assets/openmoji/1F4AC.svg" alt=""></span>
+                  <span class="sidebar-block-label" data-i18n="sidebar.conversations">Conversations</span>
+                </button>
+                <button class="sidebar-block-menu-btn icon-only-btn" id="conversations-head-menu-btn" type="button" data-i18n-title="sidebar.more_actions" title="More actions" aria-label="More actions"><svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+                <div class="sidebar-head-menu" id="conversations-head-menu" hidden>
+                  <button class="sidebar-head-menu-item" id="conversations-head-add" type="button">
+                    <span class="sidebar-head-menu-item-icon" aria-hidden="true"><img class="om-svg-icon" src="./assets/openmoji/2795.svg" alt=""></span>
+                    <span class="sidebar-head-menu-item-label" data-i18n="sidebar.new_chat">Nouvelle conversation</span>
+                  </button>
+                  <button class="sidebar-head-menu-item" id="conversations-head-export-md" type="button">
+                    <span class="sidebar-head-menu-item-icon" aria-hidden="true"><img class="om-svg-icon" src="./assets/openmoji/1F4E5.svg" alt=""></span>
+                    <span class="sidebar-head-menu-item-label" data-i18n="sidebar.export_md">Exporter en Markdown</span>
+                  </button>
+                  <button class="sidebar-head-menu-item" id="conversations-head-export-json" type="button">
+                    <span class="sidebar-head-menu-item-icon" aria-hidden="true"><img class="om-svg-icon" src="./assets/openmoji/1F9FE.svg" alt=""></span>
+                    <span class="sidebar-head-menu-item-label" data-i18n="sidebar.export_json">Exporter en JSON</span>
+                  </button>
+                </div>
+              </div>
+              <div class="sidebar-block-content" id="conversations-content">
+                <div class="conversation-list" id="conversation-list"></div>
+              </div>
+            </section>
+          </aside>
+          <div class="sidebar-resizer" id="sidebar-resizer" title="Resize sidebar"></div>
+        </div>
+
+        <main class="chat-main">
+          <section class="chat-hierarchy-view" id="chat-hierarchy-view" hidden>
+            <div class="chat-hierarchy-header">
+              <h4 id="chat-hierarchy-title" data-i18n="sidebar.groups_hierarchy_title">Groups</h4>
+              <button type="button" class="icon-btn" id="chat-hierarchy-close" data-i18n-title="sidebar.close_hierarchy" title="Close"><svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+            </div>
+            <div class="chat-hierarchy-list" id="chat-hierarchy-list"></div>
+          </section>
+          <div class="messages" id="messages"></div>
+          <div class="composer">
+            <div class="composer-main">
+              <textarea id="prompt" data-i18n-placeholder="chat.placeholder" placeholder="Type message, Enter to send, Shift+Enter for newline"></textarea>
+              <div class="composer-actions">
+                <button class="send-btn icon-only-btn" id="send-btn" type="button" title="Send" aria-label="Send">
+                  <svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="m22 2-11 11"/></svg>
+                </button>
+                <button class="stop-btn icon-only-btn" id="stop-btn" type="button" title="Stop generation" aria-label="Stop generation">
+                  <svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="chat-toolbar">
+              <label for="chat-provider" data-i18n="chat.provider">Provider</label>
+              <select id="chat-provider">
+                <!-- Populated dynamically from providers DB -->
+              </select>
+              <label for="chat-model" data-i18n="chat.model">Model</label>
+              <select id="chat-model">
+                <option value="gpt-4o-mini">gpt-4o-mini</option>
+                <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+                <option value="mistral-small">mistral-small</option>
+                <option value="llama3.2">llama3.2</option>
+              </select>
+              <button class="action-btn icon-only-btn" id="refresh-models-btn" type="button" title="Refresh models" aria-label="Refresh models">
+                <svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+              </button>
+              <label for="chat-response-style" data-i18n="chat.response_style">Response</label>
+              <select id="chat-response-style">
+                <option value="precise" data-i18n="chat.style_precise">Precise</option>
+                <option value="balanced" data-i18n="chat.style_balanced">Balanced</option>
+                <option value="creative" data-i18n="chat.style_creative">Creative</option>
+              </select>
+              <label for="chat-model-filter" class="chat-advanced-field" data-i18n="chat.filter">Filter</label>
+              <input id="chat-model-filter" class="chat-advanced-field" type="search" data-i18n-placeholder="chat.filter_models" placeholder="Filter models" aria-label="Filter models">
+              <label for="chat-temperature" class="chat-advanced-field" data-i18n="chat.temp">Temp</label>
+              <input id="chat-temperature" class="chat-advanced-field" type="number" min="0" max="2" step="0.1" value="0.7">
+              <label for="chat-max-tokens" class="chat-advanced-field" data-i18n="chat.max_tokens">Max tokens</label>
+              <input id="chat-max-tokens" class="chat-advanced-field" type="number" min="0" max="131072" step="1" value="0">
+              <input id="chat-system-prompt" class="chat-advanced-field" type="text" data-i18n-placeholder="chat.system_prompt_placeholder" placeholder="System prompt for this conversation" aria-label="System prompt for this conversation">
+            </div>
+          </div>
+        </main>
+      </div>
+    </section>
+
+    <section id="settings" class="tab-panel settings-panel">
+      <div class="settings-layout">
+        <nav class="settings-nav">
+          <button class="settings-nav-btn active" data-section="general" data-i18n="settings.general">General</button>
+          <button class="settings-nav-btn" data-section="providers" data-i18n="settings.providers">Providers</button>
+          <button class="settings-nav-btn" data-section="mcp" data-i18n="settings.mcp">MCP Servers</button>
+          <button class="settings-nav-btn" data-section="plugins" data-i18n="settings.plugins">Plugins</button>
+          <button class="settings-nav-btn" data-section="about" data-i18n="settings.about">About</button>
+        </nav>
+        <div class="settings-content">
+
+          <!-- ── General ──────────────────────────────────── -->
+          <div class="settings-section active" id="section-general">
+            <h3 data-i18n="settings.general">General</h3>
+            <div class="field-group">
+              <label for="language" data-i18n="settings.language">Language</label>
+              <select id="language">
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+                <option value="zh-TW">繁體中文</option>
+              </select>
+            </div>
+            <!-- Theme selector: hidden until multi-theme support (v2.8c THEME-12) -->
+            <div class="field-group" id="theme-field-group" hidden>
+              <label for="theme" data-i18n="settings.theme">Theme</label>
+              <select id="theme">
+                <option value="dark" data-i18n="settings.theme_dark">Dark (default)</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label data-i18n="settings.response_footer">Response footer</label>
+              <label class="checkbox-row" for="show-meta-footer">
+                <input type="checkbox" id="show-meta-footer"> <span data-i18n="settings.show_meta">Show model &amp; token info after each response</span>
+              </label>
+            </div>
+            <div class="field-group">
+              <label for="chat-font-size" data-i18n="settings.font_size">Font size</label>
+              <select id="chat-font-size">
+                <option value="xs">XS</option>
+                <option value="s">S</option>
+                <option value="m">M</option>
+                <option value="L" selected>L</option>
+                <option value="XL">XL</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label data-i18n="settings.expert_mode">Expert mode</label>
+              <label class="checkbox-row" for="expert-mode">
+                <input type="checkbox" id="expert-mode"> <span data-i18n="settings.expert_mode_desc">Show advanced prompt controls in chat</span>
+              </label>
+            </div>
+            <div class="field-group">
+              <label data-i18n="updates.auto_check_label">Auto-check for updates</label>
+              <label class="checkbox-row" for="auto-check-updates">
+                <input type="checkbox" id="auto-check-updates" checked> <span data-i18n="updates.auto_check_desc">Check for new versions on startup</span>
+              </label>
+            </div>
+            <div class="field-group">
+              <label for="default-system-prompt" data-i18n="settings.default_system_prompt">Default system prompt</label>
+              <textarea id="default-system-prompt" rows="3" data-i18n-placeholder="settings.default_system_prompt_placeholder" placeholder="Used for new conversations"></textarea>
+            </div>
+            <div class="field-group">
+              <label data-i18n="settings.configuration">Configuration</label>
+              <div class="test-connection-row">
+                <button type="button" class="action-btn" id="export-config-btn" data-i18n="settings.export_toml">Export TOML</button>
+                <label class="action-btn" for="import-config-input" data-i18n="settings.import_toml">Import TOML</label>
+                <input id="import-config-input" type="file" accept=".toml,text/plain" class="hidden">
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Providers ────────────────────────────────── -->
+          <div class="settings-section" id="section-providers">
+            <div class="providers-layout">
+              <aside class="providers-list-panel">
+                <div class="providers-list-header">
+                  <h4 data-i18n="providers.title">Providers</h4>
+                  <button class="icon-btn" id="new-provider-btn" title="Add provider"><svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
+                </div>
+                <div class="providers-list" id="providers-list"></div>
+              </aside>
+              <div class="provider-form-panel">
+                <p class="provider-form-placeholder" data-i18n="providers.placeholder">Select a provider or click + to add one.</p>
+                <form class="provider-form hidden" id="provider-form" autocomplete="off">
+                  <input type="hidden" id="pf-id">
+
+                  <!-- PROV-08: Pre-configured profile selector -->
+                  <div class="field-group">
+                    <label for="pf-preset" data-i18n="providers.load_preset">Load preset</label>
+                    <div class="preset-row">
+                      <select id="pf-preset">
+                        <option value="" data-i18n="providers.custom">— Custom / Local —</option>
+                        <!-- Populated dynamically via ListProviderProfiles -->
+                      </select>
+                      <a id="pf-docs-link" href="#" target="_blank" rel="noreferrer" class="docs-link hidden">Get API key ↗</a>
+                    </div>
+                  </div>
+
+                  <div class="field-group">
+                    <label for="pf-name" data-i18n="providers.name">Name *</label>
+                    <input id="pf-name" placeholder="My Ollama" required>
+                  </div>
+                  <div class="field-group">
+                    <label for="pf-type" data-i18n="providers.type">Provider type</label>
+                    <select id="pf-type">
+                      <option value="openai-compatible">OpenAI-compatible</option>
+                      <option value="ollama">Ollama</option>
+                      <option value="gemini">Gemini</option>
+                      <option value="anthropic">Anthropic</option>
+                      <option value="mistral">Mistral</option>
+                    </select>
+                  </div>
+                  <div class="field-group">
+                    <label for="pf-url" data-i18n="providers.base_url">Base URL</label>
+                    <input id="pf-url" placeholder="http://localhost:11434/v1">
+                  </div>
+                  <div class="field-group">
+                    <label for="pf-key" data-i18n="providers.api_key">API Key (optional)</label>
+                    <input id="pf-key" type="password" placeholder="sk-...">
+                  </div>
+                  <div class="field-group">
+                    <label for="pf-description" data-i18n="providers.description">Description</label>
+                    <textarea id="pf-description" rows="2" data-i18n-placeholder="providers.description_placeholder" placeholder="What this provider is for..."></textarea>
+                  </div>
+                  <div class="field-row">
+                    <label class="check-label"><input type="checkbox" id="pf-rag"> <span data-i18n="providers.use_in_rag">Use in RAG</span></label>
+                    <label class="check-label"><input type="checkbox" id="pf-active" checked> <span data-i18n="providers.active">Active</span></label>
+                  </div>
+                  <div class="field-group">
+                    <label for="pf-temperature" data-i18n="providers.temperature">Temperature</label>
+                    <input id="pf-temperature" type="number" min="0" max="2" step="0.1" value="0.7">
+                  </div>
+                  <div class="field-group">
+                    <label for="pf-num-ctx" data-i18n="providers.num_ctx">Context window (num_ctx)</label>
+                    <input id="pf-num-ctx" type="number" min="128" max="131072" step="128" value="1024">
+                  </div>
+
+                  <!-- PROV-05: Test connection row -->
+                  <div class="test-connection-row">
+                    <button type="button" class="action-btn secondary icon-only-btn" id="pf-test-btn" title="Test connection" aria-label="Test connection"><svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg></button>
+                    <span id="pf-test-result" class="test-result"></span>
+                  </div>
+
+                  <div class="provider-form-actions">
+                    <button type="button" class="danger-btn icon-only-btn hidden" id="pf-delete-btn" title="Delete provider" aria-label="Delete provider"><svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button>
+                    <button type="submit" class="action-btn icon-only-btn" title="Save provider" aria-label="Save provider"><svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── MCP Servers ──────────────────────────────── -->
+          <div class="settings-section" id="section-mcp">
+            <div class="providers-layout">
+              <aside class="providers-list-panel">
+                <div class="providers-list-header">
+                  <h4 data-i18n="mcp.title">MCP Servers</h4>
+                  <button class="icon-btn" id="new-mcp-btn" title="Add MCP server"><svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
+                </div>
+                <div class="providers-list" id="mcp-servers-list"></div>
+              </aside>
+              <div class="provider-form-panel">
+                <p class="provider-form-placeholder" id="mcp-form-placeholder" data-i18n="mcp.placeholder">Select a server or click + to add one.</p>
+                <form class="provider-form hidden" id="mcp-server-form" autocomplete="off">
+                  <input type="hidden" id="msf-id">
+                  <div class="field-group">
+                    <label for="msf-name" data-i18n="mcp.name">Name *</label>
+                    <input id="msf-name" placeholder="aitao local" required>
+                  </div>
+                  <div class="field-group">
+                    <label for="msf-transport" data-i18n="mcp.transport">Transport *</label>
+                    <select id="msf-transport">
+                      <option value="http" data-i18n="mcp.transport_http">HTTP (Streamable HTTP / MCP 1.0) — URL: http://host/mcp</option>
+                      <option value="sse" data-i18n="mcp.transport_sse">SSE (legacy FastMCP / aitao) — URL: http://host:port</option>
+                      <option value="stdio" data-i18n="mcp.transport_stdio">stdio (spawn process)</option>
+                    </select>
+                  </div>
+                  <div class="field-group" id="msf-url-group">
+                    <label for="msf-url" data-i18n="mcp.url">URL</label>
+                    <input id="msf-url" placeholder="http://localhost:8201">
+                  </div>
+                  <div class="field-group hidden" id="msf-cmd-group">
+                    <label for="msf-command" data-i18n="mcp.command">Command</label>
+                    <input id="msf-command" placeholder="aitao">
+                  </div>
+                  <div class="field-group hidden" id="msf-args-group">
+                    <label for="msf-args" data-i18n="mcp.args">Args (JSON array)</label>
+                    <input id="msf-args" placeholder='["mcp", "stdio"]'>
+                  </div>
+                  <div class="field-group">
+                    <label class="checkbox-row" for="msf-active">
+                      <input type="checkbox" id="msf-active" checked> <span data-i18n="mcp.active">Active</span>
+                    </label>
+                  </div>
+                  <div class="field-group test-connection-row">
+                    <button type="button" class="action-btn secondary icon-only-btn" id="msf-ping-btn" title="Test connection" aria-label="Test connection"><svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg></button>
+                    <button type="button" class="action-btn secondary icon-only-btn" id="msf-copy-btn" title="Copy config" aria-label="Copy config"><svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button>
+                    <span id="msf-ping-status" class="test-result"></span>
+                  </div>
+                  <div id="msf-tools-list" class="tools-list hidden"></div>
+                  <div class="provider-form-actions">
+                    <button type="button" class="danger-btn icon-only-btn hidden" id="msf-delete-btn" title="Delete MCP server" aria-label="Delete MCP server"><svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button>
+                    <button type="submit" class="action-btn icon-only-btn" title="Save MCP server" aria-label="Save MCP server"><svg class="lucide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></button>
+                  </div>
+                  <p id="msf-status" class="form-status-msg"></p>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── Plugins ─────────────────────────────────── -->
+          <div class="settings-section" id="section-plugins">
+            <h3 data-i18n="settings.plugins">Plugins</h3>
+            <p class="plugin-help" data-i18n="plugins.help_intro">A plugin can intercept messages or tool output. Enable only what you need for your workflow.</p>
+            <div class="field-group">
+              <label data-i18n="plugins.installed">Installed plugins</label>
+              <div class="test-connection-row">
+                <button type="button" class="action-btn" id="plugins-reload-btn" data-i18n="plugins.reload">Reload plugins</button>
+              </div>
+              <div id="plugins-list" class="plugins-list"></div>
+            </div>
+
+            <div class="field-group">
+              <label data-i18n="plugins.prompt_library">Prompt library</label>
+              <p class="plugin-help" data-i18n="plugins.help_prompt_library">Default templates: summarize = concise 5-bullet summary, translate_fr = translate latest answer to French. Use /tpl &lt;name&gt; in chat.</p>
+              <div class="field-group">
+                <input id="plugins-prompt-name" placeholder="template_name">
+                <textarea id="plugins-prompt-content" rows="2" placeholder="Prompt template content"></textarea>
+              </div>
+              <div class="test-connection-row">
+                <select id="plugins-prompt-list"></select>
+                <button type="button" class="action-btn" id="plugins-prompt-insert-btn" data-i18n="plugins.insert">Insert</button>
+                <button type="button" class="action-btn" id="plugins-prompt-save-btn" data-i18n="plugins.save">Save</button>
+                <button type="button" class="danger-btn" id="plugins-prompt-delete-btn" data-i18n="plugins.delete">Delete</button>
+              </div>
+            </div>
+
+            <div class="field-group">
+              <label data-i18n="plugins.export">Conversation export</label>
+              <div class="test-connection-row">
+                <button type="button" class="action-btn" id="plugins-export-md-btn" data-i18n="plugins.export_md">Export Markdown</button>
+                <button type="button" class="action-btn" id="plugins-export-pdf-btn" data-i18n="plugins.export_pdf">Export PDF</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section" id="section-about">
+            <h3 data-i18n="settings.about">About</h3>
+            <div id="about-content" class="about-content"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="./prism/prism.js"></script>
+  <script src="./katex/katex.min.js"></script>
+  <script src="./katex/auto-render.min.js"></script>
+  <script type="module" src="/wails/runtime.js"></script>
+  <script type="module" src="./js/icons.js"></script>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

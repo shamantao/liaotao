@@ -1,0 +1,44 @@
+{
+  "RT_GROUP_ICON": {
+    "APP": {
+      "0000": "build/windows/icon.ico"
+    }
+  },
+  "RT_MANIFEST": {
+    "#1": {
+      "0409": {
+        "identity": {
+          "name": "org.shamantao.liaotao",
+          "version": "0.2.3.0"
+        },
+        "description": "liaotao - Local-first multi-provider AI chat",
+        "minimum-os": "win7",
+        "execution-level": "asInvoker",
+        "dpi-awareness": "system",
+        "use-common-controls-v6": true
+      }
+    }
+  },
+  "RT_VERSION": {
+    "#1": {
+      "0000": {
+        "fixed": {
+          "file_version": "0.2.3.0",
+          "product_version": "0.2.3.0"
+        },
+        "info": {
+          "0409": {
+            "CompanyName": "shamantao",
+            "FileDescription": "liaotao - Local-first multi-provider AI chat",
+            "FileVersion": "0.2.3",
+            "InternalName": "liaotao",
+            "LegalCopyright": "(c) 2026 shamantao",
+            "OriginalFilename": "liaotao.exe",
+            "ProductName": "liaotao",
+            "ProductVersion": "0.2.3"
+          }
+        }
+      }
+    }
+  }
+}

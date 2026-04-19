@@ -17,7 +17,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-//go:embed frontend
+//go:embed frontend/dist
 var assets embed.FS
 
 func main() {
@@ -57,7 +57,7 @@ func main() {
 	bindingService := bindings.NewService(database, cfg.PathManager.AllowedRoots...)
 	appLogger.Info("backend services ready", "has_bindings", bindingService != nil)
 
-	frontendFS, err := fs.Sub(assets, "frontend")
+	frontendFS, err := fs.Sub(assets, "frontend/dist")
 	if err != nil {
 		log.Fatalf("assets: %v", err)
 	}

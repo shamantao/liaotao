@@ -1,0 +1,62 @@
+/*
+  tokens.css — Primitive design tokens for liaotao.
+  Defines the raw palette, spacing scale, radius scale, and typography.
+  These primitives are consumed by semantic.css — never directly by components.
+  Theme authors override this file to recolor the entire app.
+*/
+
+:root {
+  /* ── Palette: Aurica Circular ────────────────────────────────────── */
+
+  /* Midnight Blue */
+  --color-midnight-500: #1E3D59;
+  --color-midnight-600: #162d43;
+  --color-midnight-700: #122033;
+  --color-midnight-800: #0d1522;
+  --color-midnight-400: #275177;
+  --color-midnight-300: #2a5271;
+
+  /* Jade Green */
+  --color-jade-500: #45998A;
+  --color-jade-400: #4DA897;
+  --color-jade-600: #3E8E7E;
+  --color-jade-700: #1e3d35;
+
+  /* Ink Black */
+  --color-ink-900: #141414;
+  --color-ink-800: #1B1B1B;
+  --color-ink-700: #222222;
+  --color-ink-600: #252525;
+  --color-ink-500: #2e2e2e;
+  --color-ink-400: #333333;
+
+  /* Warm Beige */
+  --color-beige-100: #E9E3D5;
+  --color-beige-200: #beb8ad;
+  --color-beige-300: #A8A29E;
+
+  /* Semantic colors */
+  --color-danger: #cc6b64;
+  --color-warning: #f4b266;
+  --color-ok: #45998A;
+
+  /* ── Spacing scale (4px grid) ────────────────────────────────────── */
+  --space-1: 0.25rem;   /*  4px */
+  --space-2: 0.5rem;    /*  8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+
+  /* ── Radius scale ────────────────────────────────────────────────── */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* ── Typography ──────────────────────────────────────────────────── */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}

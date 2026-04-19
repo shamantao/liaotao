@@ -5,7 +5,9 @@
     "status_ready": "ready"
   },
   "sidebar": {
+    "navigation": "Navigation",
     "conversations": "Conversations",
+    "groups": "Groups",
     "projects": "Projects",
     "all_projects": "All projects",
     "project_dashboard": "Project dashboard",
@@ -43,6 +45,12 @@
     "older": "Older",
     "no_conversations": "No conversations",
     "no_conversations_search": "No conversations for this search.",
+    "no_groups": "No groups with conversations",
+    "see_more": "See more",
+    "see_more_tooltip": "Open full list",
+    "see_more_conversations": "See more conversations",
+    "groups_hierarchy_title": "Groups",
+    "close_hierarchy": "Close hierarchy view",
     "rename_save": "Save",
     "rename_cancel": "Cancel",
     "confirm_deletion": "Confirm deletion",
@@ -53,6 +61,12 @@
     ,"token_count_title": "~estimated tokens in conversation"
     ,"more_actions": "More actions"
     ,"rename_action": "Rename"
+    ,"assign_group_action": "Assign to group"
+    ,"assign_group_prompt": "Assign this conversation to a group. Enter the group ID:"
+    ,"assign_group_none_option": "No group (keep only in Conversations)"
+    ,"assign_group_invalid": "Invalid group ID"
+    ,"assign_group_failed": "Unable to assign group"
+    ,"assign_group_done": "Conversation assigned to {{group}}"
     ,"delete_action": "Delete"
     ,"export_md": "Export as Markdown"
     ,"export_json": "Export as JSON"
@@ -67,6 +81,11 @@
     ,"tag_deleted": "tag deleted"
     ,"create_tag": "Create tag"
     ,"new_tag_name": "New tag name"
+    ,"new_group_action": "Add group"
+    ,"export_group_md": "Export group (.md)"
+    ,"export_group_json": "Export group (.json)"
+    ,"group_export_select_required": "Select a group first"
+    ,"group_export_unavailable": "Group export is not available yet"
   },
   "chat": {
     "placeholder": "Type message, Enter to send, Shift+Enter for newline",

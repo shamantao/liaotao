@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 2000 2000" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;">
+    <g transform="matrix(1,0,0,1,-2255,0)">
+        <g id="Liaotao" transform="matrix(2.857143,0,0,2.857143,2255,0)">
+            <rect x="0" y="0" width="700" height="700" style="fill:none;"/>
+            <g id="Humain2" transform="matrix(1.626648,0,0,1.626648,118.81047,-464.53504)">
+                <path d="M49.253,416.5C30.505,426.906 23.763,434.255 24.006,465.544" style="fill:none;fill-rule:nonzero;stroke:rgb(62,142,126);stroke-width:15px;"/>
+                <path d="M113,416.5C131.748,426.906 138.49,434.255 138.247,465.544" style="fill:none;fill-rule:nonzero;stroke:rgb(62,142,126);stroke-width:15px;"/>
+                <circle cx="82" cy="394.5" r="32" style="fill:none;stroke:rgb(62,142,126);stroke-width:12.91px;stroke-linecap:butt;"/>
+            </g>
+            <g transform="matrix(10.966667,0,0,10.966667,-36039.15,-5281.441667)">
+                <g transform="matrix(25.531915,0,0,25.531915,3335.246809,511)">
+                </g>
+                <text x="3321px" y="511px" style="font-family:'Monoglyceride';font-size:25.532px;">&gt;</text>
+            </g>
+            <g transform="matrix(10.966667,0,0,10.966667,-36039.15,-5037.841667)">
+                <g transform="matrix(25.531915,0,0,25.531915,3335.246809,511)">
+                </g>
+                <text x="3321px" y="511px" style="font-family:'Monoglyceride';font-size:25.532px;">&gt;</text>
+            </g>
+            <g transform="matrix(10.966667,0,0,10.966667,-36262.45,-5037.841667)">
+                <g transform="matrix(22.468085,0,0,22.468085,3339.378894,508.84)">
+                </g>
+                <text x="3321px" y="508.84px" style="font-family:'Monoglyceride';font-size:22.468px;fill:rgb(30,61,89);stroke:rgb(221,199,124);stroke-width:0.03px;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:2;">Ai</text>
+            </g>
+            <g transform="matrix(0.414723,0,0,0.434449,-1203.7592,-113.557183)">
+                <path d="M3147.039,1480.067C3062.617,1363.268 3013,1220.753 3013,1067C3013,671.277 3341.67,350 3746.5,350C4151.33,350 4480,671.277 4480,1067C4480,1462.723 4151.33,1784 3746.5,1784C3498.962,1784 3279.899,1663.879 3147.039,1480.067" style="fill:none;stroke:rgb(221,199,124);stroke-width:74.17px;stroke-linejoin:round;stroke-miterlimit:1.5;"/>
+            </g>
+        </g>
+    </g>
+</svg>

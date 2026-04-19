@@ -5,7 +5,9 @@
     "status_ready": "prêt"
   },
   "sidebar": {
+    "navigation": "Navigation",
     "conversations": "Conversations",
+    "groups": "Groupes",
     "projects": "Projets",
     "all_projects": "Tous les projets",
     "project_dashboard": "Tableau projet",
@@ -43,6 +45,12 @@
     "older": "Plus ancien",
     "no_conversations": "Aucune conversation",
     "no_conversations_search": "Aucune conversation pour cette recherche.",
+    "no_groups": "Aucun groupe avec conversations",
+    "see_more": "Voir plus",
+    "see_more_tooltip": "Ouvrir la liste complète",
+    "see_more_conversations": "Voir plus de conversations",
+    "groups_hierarchy_title": "Groupes",
+    "close_hierarchy": "Fermer la vue hiérarchique",
     "rename_save": "Enregistrer",
     "rename_cancel": "Annuler",
     "confirm_deletion": "Confirmer la suppression",
@@ -53,6 +61,12 @@
     ,"token_count_title": "~tokens estimés dans la conversation"
     ,"more_actions": "Plus d'actions"
     ,"rename_action": "Renommer"
+    ,"assign_group_action": "Affecter au groupe"
+    ,"assign_group_prompt": "Affecter cette conversation à un groupe. Entrez l'identifiant du groupe :"
+    ,"assign_group_none_option": "Aucun groupe (reste uniquement dans Conversations)"
+    ,"assign_group_invalid": "Identifiant de groupe invalide"
+    ,"assign_group_failed": "Impossible d'affecter le groupe"
+    ,"assign_group_done": "Conversation affectée à {{group}}"
     ,"delete_action": "Supprimer"
     ,"export_md": "Exporter en Markdown"
     ,"export_json": "Exporter en JSON"
@@ -67,6 +81,11 @@
     ,"tag_deleted": "tag supprimé"
     ,"create_tag": "Créer un tag"
     ,"new_tag_name": "Nom du nouveau tag"
+    ,"new_group_action": "Ajouter un groupe"
+    ,"export_group_md": "Exporter groupe (.md)"
+    ,"export_group_json": "Exporter groupe (.json)"
+    ,"group_export_select_required": "Sélectionnez d'abord un groupe"
+    ,"group_export_unavailable": "L'export de groupe n'est pas encore disponible"
   },
   "chat": {
     "placeholder": "Écrire un message, Entrée pour envoyer, Maj+Entrée pour un saut de ligne",
