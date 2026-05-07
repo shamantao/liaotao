@@ -1,90 +1,36 @@
-# liaotao
+# Liaotao Documentation Index
 
 Date: 2026-05-07
-Stack: wails-go
-Template version: 1.0.0
-Profile: minimal
+Primary stack: Kotlin + Compose Desktop
+Status: Architecture reset in progress
 
-## Overview
-<!-- Describe your project here -->
+## Reading Order
 
-## Requirements
-<!-- List runtime dependencies (ffmpeg, ffprobe, etc.) -->
+1. `docs/ARCHITECTURE.md` for the implementation target.
+2. `docs/SECURITY.md` for security handling rules.
+3. `docs/CHANGELOG.md` for release history.
+4. External product references in `docs-liaotao/` for PRD and backlog.
 
-## Getting Started
-```bash
-# see adapter-specific instructions in the adapter README
-```
+## Local Development Baseline
 
-## Quality Checks (mandatory baseline)
-Run these commands before publishing or opening a pull request:
+Run these commands before publishing changes:
 
 ```bash
 bash scripts/test-integrity.sh
 bash scripts/test-dependencies.sh
 bash scripts/check-secrets.sh
-bash scripts/healthcheck.sh --stack wails-go
+bash scripts/healthcheck.sh --stack compose-desktop
 ```
 
-What this baseline does:
-- `test-integrity.sh`: checks project integrity (required docs/files, unresolved template placeholders)
-- `test-dependencies.sh`: checks dependency metadata and required package tools
-- `check-secrets.sh`: detects obvious credentials/tokens
-- `healthcheck.sh`: runs global sanity checks and stack checks
+## Current Constraints
 
-Project-specific tests (business logic, E2E details) remain the responsibility of each project team.
+1. The repository has been migrated away from Wails at the architecture level.
+2. The Gradle wrapper still needs to be generated on a machine with a working JDK.
+3. Kotlin Compose Desktop is now the only approved application stack.
 
-## Configuration
-Edit `config/default.toml` to adjust defaults.  
-User overrides go in `~/.config/liaotao/user.toml`.
+## Near-Term Technical Goal
 
-## Logs
-Logs are written to `logs/` (JSON + human-readable).
-
-## Debug vs Normal Mode
-- `debug`: originals are never deleted.
-- `normal`: originals are moved to Trash after successful processing.
-
-Always start in `debug` mode until you trust the workflow.
-
-## Project Layout
-```
-liaotao/
-  LICENSE
-  config/
-    default.toml
-  docs/
-    ARCHITECTURE.md
-    SECURITY.md
-  logs/
-  reports/
-  scripts/
-    check-secrets.sh
-    test-integrity.sh
-    test-dependencies.sh
-    healthcheck.sh
-  tests/
-  Jenkinsfile           ← (only if CI profile = jenkins-docker)
-  ci/jenkins/
-    docker-compose.jenkins.yml
-  src-tauri/            ← (tauri-rust only)
-  src/                  ← (tauri-rust only)
-```
-
-## Governance
-- Versioning follows SemVer (`MAJOR.MINOR.PATCH`).
-- Changelog format follows Keep a Changelog.
-- Security reporting rules are documented in `docs/SECURITY.md`.
-
-## Optional CI (Jenkins via Docker)
-If your project was generated with CI profile `jenkins-docker`:
-
-```bash
-docker compose -f ci/jenkins/docker-compose.jenkins.yml up -d
-```
-
-Then configure Jenkins to run the pipeline using `Jenkinsfile`.
-
-## Template
-This project was generated from `devwww/tao-init`.  
-See `devwww/tao-init.sh` to generate new projects.
+Reach a runnable desktop shell with:
+1. `app-desktop` as the executable module.
+2. `domain`, `connectors`, `persistence`, and `shared` as initial boundaries.
+3. Packaged desktop outputs for macOS, Windows, and Linux.

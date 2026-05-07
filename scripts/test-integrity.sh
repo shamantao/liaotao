@@ -18,6 +18,8 @@ echo ""
 [[ -f "$PROJECT_DIR/LICENSE" ]] && ok "LICENSE present" || fail "LICENSE missing"
 [[ -f "$PROJECT_DIR/docs/ARCHITECTURE.md" ]] && ok "docs/ARCHITECTURE.md present" || fail "docs/ARCHITECTURE.md missing"
 [[ -f "$PROJECT_DIR/docs/SECURITY.md" ]] && ok "docs/SECURITY.md present" || fail "docs/SECURITY.md missing"
+[[ -f "$PROJECT_DIR/docs/RELEASE_CHECKLIST.md" ]] && ok "docs/RELEASE_CHECKLIST.md present" || fail "docs/RELEASE_CHECKLIST.md missing"
+[[ -f "$PROJECT_DIR/tests/desktop-packaged-smoke-checklist.md" ]] && ok "tests/desktop-packaged-smoke-checklist.md present" || fail "tests/desktop-packaged-smoke-checklist.md missing"
 [[ -f "$PROJECT_DIR/CHANGELOG.md" || -f "$PROJECT_DIR/docs/CHANGELOG.md" ]] && ok "CHANGELOG present" || fail "CHANGELOG missing"
 
 if command -v rg >/dev/null 2>&1; then

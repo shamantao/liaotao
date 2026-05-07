@@ -4,8 +4,11 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PASS=0
 FAIL=0
+
+source "$SCRIPT_DIR/java-env.sh"
 
 ok()   { echo "  [OK]  $1"; PASS=$((PASS+1)); }
 fail() { echo "  [FAIL] $1"; FAIL=$((FAIL+1)); }
@@ -16,6 +19,33 @@ echo "=== Dependency Checks ==="
 echo ""
 
 detected=0
+
+# Kotlin / Gradle ecosystem
+if [[ -f "$PROJECT_DIR/settings.gradle.kts" || -f "$PROJECT_DIR/build.gradle.kts" ]]; then
+  detected=$((detected+1))
+  note "Gradle/Kotlin project detected."
+
+  if ensure_java_21_runtime; then
+    ok "JDK 21 runtime found"
+  else
+    if resolve_java_runtime; then
+      fail "Java runtime found but not JDK 21 (found major $(java_major_version || echo unknown))"
+    else
+      fail "Java runtime not found or not configured"
+    fi
+  fi
+
+  if [[ -x "$PROJECT_DIR/gradlew" ]]; then
+    ok "Gradle wrapper present"
+  elif command -v gradle >/dev/null 2>&1; then
+    ok "gradle found"
+  else
+    fail "Neither Gradle wrapper nor gradle command found"
+  fi
+
+  [[ -f "$PROJECT_DIR/settings.gradle.kts" ]] && ok "settings.gradle.kts present" || fail "settings.gradle.kts missing"
+  [[ -f "$PROJECT_DIR/build.gradle.kts" ]] && ok "build.gradle.kts present" || fail "build.gradle.kts missing"
+fi
 
 # Node ecosystem
 if [[ -f "$PROJECT_DIR/package.json" ]]; then
@@ -38,10 +68,10 @@ fi
 if [[ -f "$PROJECT_DIR/pyproject.toml" || -f "$PROJECT_DIR/requirements.txt" || -f "$PROJECT_DIR/requirements-dev.txt" ]]; then
   detected=$((detected+1))
   note "Python project detected."
-  if command -v python3 >/dev/null 2>&1; then
-    ok "python3 found"
+  if command -v uv >/dev/null 2>&1; then
+    ok "uv found"
   else
-    fail "python3 not found"
+    fail "uv not found"
   fi
 
   if [[ -f "$PROJECT_DIR/pyproject.toml" || -f "$PROJECT_DIR/requirements.txt" ]]; then

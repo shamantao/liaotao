@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
-# healthcheck.sh — verifies the generated project boots and passes sanity checks.
-# Usage: bash scripts/healthcheck.sh [--stack tauri-rust|bash-shell|python]
+# healthcheck.sh — verifies the project structure and selected stack baseline.
+# Usage: bash scripts/healthcheck.sh [--stack tauri-rust|bash-shell|python|compose-desktop]
 
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/java-env.sh"
 
 STACK="auto"
 if [[ "${1:-}" == "--stack" && -n "${2:-}" ]]; then
@@ -68,13 +71,35 @@ if [[ "$STACK" == "python" ]] || [[ -f "$PROJECT_DIR/pyproject.toml" ]]; then
   [[ -f "$PROJECT_DIR/.python-version" ]]  && ok ".python-version found ($(cat "$PROJECT_DIR/.python-version"))" || fail ".python-version missing"
 fi
 
-if [[ "$STACK" == "wails-go" ]] || [[ -f "$PROJECT_DIR/go.mod" ]]; then
+if [[ "$STACK" == "compose-desktop" ]] || [[ -f "$PROJECT_DIR/settings.gradle.kts" ]]; then
+  echo ""
+  echo "-- Stack: compose-desktop --"
+  if ensure_java_21_runtime; then
+    ok "JDK 21 runtime found"
+  else
+    if resolve_java_runtime; then
+      fail "Java runtime found but not JDK 21 (found major $(java_major_version || echo unknown))"
+    else
+      fail "Java runtime not found or not configured"
+    fi
+  fi
+  if [[ -x "$PROJECT_DIR/gradlew" ]]; then
+    ok "Gradle wrapper found"
+  elif command -v gradle >/dev/null 2>&1; then
+    ok "gradle found"
+  else
+    fail "Neither Gradle wrapper nor gradle command found"
+  fi
+  [[ -f "$PROJECT_DIR/settings.gradle.kts" ]] && ok "settings.gradle.kts found" || fail "settings.gradle.kts missing"
+  [[ -f "$PROJECT_DIR/build.gradle.kts" ]] && ok "build.gradle.kts found" || fail "build.gradle.kts missing"
+  [[ -f "$PROJECT_DIR/app-desktop/build.gradle.kts" ]] && ok "app-desktop/build.gradle.kts found" || fail "app-desktop/build.gradle.kts missing"
+  [[ -f "$PROJECT_DIR/app-desktop/src/main/kotlin/io/liaotao/appdesktop/Main.kt" ]] && ok "desktop main entry point found" || fail "desktop main entry point missing"
+fi
+
+if [[ "$STACK" == "wails-go" ]]; then
   echo ""
   echo "-- Stack: wails-go --"
-  command -v go     >/dev/null 2>&1 && ok "go found ($(go version))"                || fail "go not found — install: https://go.dev/dl/"
-  command -v wails3 >/dev/null 2>&1 && ok "wails3 CLI found"                        || fail "wails3 not found — install: go install github.com/wailsapp/wails/v3/cmd/wails3@latest"
-  [[ -f "$PROJECT_DIR/go.mod" ]]   && ok "go.mod found"                             || fail "go.mod missing"
-  [[ -f "$PROJECT_DIR/main.go" ]]  && ok "main.go found"                            || fail "main.go missing"
+  fail "wails-go is no longer an approved stack for this repository"
 fi
 
 # --- Summary ---

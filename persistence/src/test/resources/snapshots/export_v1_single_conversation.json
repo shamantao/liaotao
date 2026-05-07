@@ -1,0 +1,28 @@
+{
+    "schemaVersion": 1,
+    "exportedAt": "2026-05-07T12:30:00Z",
+    "conversations": [
+        {
+            "id": "conv-p1",
+            "projectId": "p1",
+            "title": "Sample",
+            "source": "OLLAMA",
+            "model": "qwen3",
+            "createdAt": "2026-05-07T12:00:00Z",
+            "updatedAt": "2026-05-07T12:00:00Z",
+            "lastActivityAt": "2026-05-07T12:00:00Z",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "hello",
+                    "createdAt": "2026-05-07T12:00:00Z"
+                },
+                {
+                    "role": "assistant",
+                    "content": "hi",
+                    "createdAt": "2026-05-07T12:00:00Z"
+                }
+            ]
+        }
+    ]
+}
