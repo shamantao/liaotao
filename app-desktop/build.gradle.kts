@@ -11,10 +11,13 @@ plugins {
 dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
+    implementation(compose.components.resources)
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
     implementation(project(":domain"))
     implementation(project(":connectors"))
     implementation(project(":persistence"))
     implementation(project(":shared"))
+    testImplementation(kotlin("test"))
 }
 
 compose.desktop {

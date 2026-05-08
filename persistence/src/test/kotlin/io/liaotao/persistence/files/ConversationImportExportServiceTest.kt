@@ -47,6 +47,18 @@ class ConversationImportExportServiceTest {
     }
 
     @Test
+    fun `export all conversations keeps transcripts from multiple projects`() {
+        val service = ConversationImportExportService()
+        val payload = service.exportAllConversations(
+            transcripts = listOf(sampleTranscript("a"), sampleTranscript("b")),
+        )
+
+        val imported = service.importPackage(payload).first
+        assertEquals(2, imported.size)
+        assertTrue(imported.map { it.conversation.projectId }.containsAll(listOf("a", "b")))
+    }
+
+    @Test
     fun `import reports invalid schema version`() {
         val service = ConversationImportExportService()
         val invalid = """

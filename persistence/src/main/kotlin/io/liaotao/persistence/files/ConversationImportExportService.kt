@@ -30,6 +30,10 @@ class ConversationImportExportService(
     private val json: Json = Json { prettyPrint = true; ignoreUnknownKeys = true },
     private val nowProvider: () -> Instant = { Instant.now() },
 ) {
+    fun exportAllConversations(transcripts: List<ConversationTranscript>): String {
+        return exportPackage(transcripts)
+    }
+
     fun exportSingleConversation(transcript: ConversationTranscript): String {
         return exportPackage(listOf(transcript))
     }

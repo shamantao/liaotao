@@ -20,6 +20,7 @@ data class ConnectorSetting(
     val connectorType: String,
     val displayName: String,
     val baseUrl: String,
+    val defaultModel: String,
     val isEnabled: Boolean,
     val secretRef: String?,
     val createdAt: Instant,

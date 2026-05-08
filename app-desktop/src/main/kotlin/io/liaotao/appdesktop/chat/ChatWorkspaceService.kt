@@ -13,15 +13,22 @@ import io.liaotao.connectors.core.ConnectorMessage
 import io.liaotao.connectors.core.ConnectorRegistry
 import io.liaotao.connectors.core.ConnectorStreamResult
 import io.liaotao.connectors.core.ConnectorType
-import io.liaotao.connectors.ollama.OllamaConnector
-import io.liaotao.connectors.litellm.LiteLlmConnector
-import io.liaotao.connectors.aitao.AitaoConnector
 import io.liaotao.domain.conversations.Conversation
 import io.liaotao.domain.routing.InMemoryExecutionHistoryRepository
 import io.liaotao.domain.routing.ProviderExecutionResult
 import io.liaotao.domain.routing.RoutingPolicyService
+import io.liaotao.persistence.files.ConversationTranscript
+import io.liaotao.persistence.files.TranscriptMessage
 import java.time.Instant
 import java.util.UUID
+
+internal data class ChatProviderConfig(
+    val id: String,
+    val connectorType: ConnectorType,
+    val displayName: String,
+    val baseUrl: String,
+    val defaultModel: String,
+)
 
 internal data class ChatExecutionResult(
     val reply: String,
@@ -34,34 +41,38 @@ internal class ChatWorkspaceService {
     private val historyRepository = InMemoryExecutionHistoryRepository()
     private val routing = RoutingPolicyService(historyRepository = historyRepository)
     private val conversationHistory = mutableListOf<Conversation>()
+    private val transcriptHistory = mutableListOf<ConversationTranscript>()
 
     fun execute(
         prompt: String,
-        provider: ConnectorType,
+        provider: ChatProviderConfig,
+        availableProviders: List<ChatProviderConfig>,
+        projectId: String,
         onAssistantChunk: (String) -> Unit = {},
     ): ChatExecutionResult {
         var finalReply = ""
-        var finalSource = provider.name
+        var finalSource = provider.displayName
         var finalModel = "unknown"
 
-        val fallback = ConnectorType.entries
-            .filter { it != provider }
-            .map { it.name }
+        val providersById = availableProviders.associateBy { it.id }
+        val fallback = availableProviders
+            .filter { it.id != provider.id }
+            .map { it.id }
 
         val execution = routing.executeWithFallback(
-            primaryProvider = provider.name,
+            primaryProvider = provider.id,
             fallbackProviders = fallback,
             maxRetries = 1,
             backoffMs = 100,
         ) { providerId ->
-            val type = runCatching { ConnectorType.valueOf(providerId) }.getOrNull()
+            val targetProvider = providersById[providerId]
                 ?: return@executeWithFallback ProviderExecutionResult(false, "Unknown provider")
-            val connector = ConnectorRegistry.create(type)
+            val connector = ConnectorRegistry.create(targetProvider.connectorType)
             val config = ConnectorExecutionConfig(
-                baseUrl = defaultBaseUrl(type),
+                baseUrl = targetProvider.baseUrl,
             )
             val request = ConnectorChatRequest(
-                model = defaultModel(type),
+                model = targetProvider.defaultModel,
                 messages = listOf(ConnectorMessage(role = "user", content = prompt)),
             )
             when (val stream = connector.streamChat(config, request)) {
@@ -74,7 +85,7 @@ internal class ChatWorkspaceService {
                         }
                     }
                     finalReply = builder.toString()
-                    finalSource = providerId
+                    finalSource = targetProvider.displayName
                     finalModel = request.model
                     if (finalReply.isNotBlank()) {
                         ProviderExecutionResult(isSuccess = true)
@@ -98,7 +109,7 @@ internal class ChatWorkspaceService {
                     when (val result = connector.chat(config, request)) {
                         is ConnectorChatResult.Success -> {
                             finalReply = result.response.content
-                            finalSource = providerId
+                            finalSource = targetProvider.displayName
                             finalModel = result.response.model
                             onAssistantChunk(finalReply)
                             ProviderExecutionResult(isSuccess = true)
@@ -113,10 +124,12 @@ internal class ChatWorkspaceService {
         }
 
         val now = Instant.now()
+        val conversationId = UUID.randomUUID().toString()
+        val replyForTranscript = finalReply.ifBlank { "No provider could answer." }
         conversationHistory.add(
             Conversation(
-                id = UUID.randomUUID().toString(),
-                projectId = "default",
+            id = conversationId,
+            projectId = projectId,
                 title = prompt.take(42),
                 source = finalSource,
                 model = finalModel,
@@ -127,8 +140,18 @@ internal class ChatWorkspaceService {
             ),
         )
 
+        transcriptHistory.add(
+            ConversationTranscript(
+                conversation = conversationHistory.last(),
+                messages = listOf(
+                    TranscriptMessage(role = "user", content = prompt, createdAt = now),
+                    TranscriptMessage(role = "assistant", content = replyForTranscript, createdAt = now),
+                ),
+            ),
+        )
+
         return ChatExecutionResult(
-            reply = finalReply.ifBlank { "No provider could answer." },
+            reply = replyForTranscript,
             source = finalSource,
             model = finalModel,
             attempts = execution.attempts,
@@ -137,21 +160,5 @@ internal class ChatWorkspaceService {
 
     fun conversationHistory(): List<Conversation> = conversationHistory.toList()
 
-    private fun defaultBaseUrl(type: ConnectorType): String {
-        return when (type) {
-            ConnectorType.OLLAMA -> OllamaConnector.DEFAULT_BASE_URL
-            ConnectorType.LITELLM -> LiteLlmConnector.DEFAULT_BASE_URL
-            ConnectorType.AITAO -> AitaoConnector.DEFAULT_BASE_URL
-            ConnectorType.OPENAI_COMPAT -> LiteLlmConnector.DEFAULT_BASE_URL
-        }
-    }
-
-    private fun defaultModel(type: ConnectorType): String {
-        return when (type) {
-            ConnectorType.OLLAMA -> OllamaConnector.DEFAULT_MODEL
-            ConnectorType.LITELLM -> "gpt-4o-mini"
-            ConnectorType.AITAO -> "aitao-default"
-            ConnectorType.OPENAI_COMPAT -> "gpt-4o-mini"
-        }
-    }
+    fun transcriptHistory(): List<ConversationTranscript> = transcriptHistory.toList()
 }

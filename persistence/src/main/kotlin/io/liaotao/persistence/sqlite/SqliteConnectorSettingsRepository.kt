@@ -20,18 +20,23 @@ class SqliteConnectorSettingsRepository(
                 """
                 INSERT INTO connector_instances(
                     id, connector_type, display_name, base_url,
-                    is_enabled, created_at, updated_at
+                    default_model, is_enabled, secret_ref,
+                    created_at, updated_at, connection_health, connection_message
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """.trimIndent(),
             ).use { prepared ->
                 prepared.setString(1, setting.id)
                 prepared.setString(2, setting.connectorType)
                 prepared.setString(3, setting.displayName)
                 prepared.setString(4, setting.baseUrl)
-                prepared.setInt(5, if (setting.isEnabled) 1 else 0)
-                prepared.setString(6, setting.createdAt.toString())
-                prepared.setString(7, setting.updatedAt.toString())
+                prepared.setString(5, setting.defaultModel)
+                prepared.setInt(6, if (setting.isEnabled) 1 else 0)
+                prepared.setString(7, setting.secretRef)
+                prepared.setString(8, setting.createdAt.toString())
+                prepared.setString(9, setting.updatedAt.toString())
+                prepared.setString(10, setting.connectionHealth.name)
+                prepared.setString(11, setting.connectionMessage)
                 prepared.executeUpdate()
             }
         }
@@ -44,16 +49,21 @@ class SqliteConnectorSettingsRepository(
                 """
                 UPDATE connector_instances
                 SET connector_type = ?, display_name = ?, base_url = ?,
-                    is_enabled = ?, updated_at = ?
+                    default_model = ?, is_enabled = ?, secret_ref = ?,
+                    updated_at = ?, connection_health = ?, connection_message = ?
                 WHERE id = ?
                 """.trimIndent(),
             ).use { prepared ->
                 prepared.setString(1, setting.connectorType)
                 prepared.setString(2, setting.displayName)
                 prepared.setString(3, setting.baseUrl)
-                prepared.setInt(4, if (setting.isEnabled) 1 else 0)
-                prepared.setString(5, setting.updatedAt.toString())
-                prepared.setString(6, setting.id)
+                prepared.setString(4, setting.defaultModel)
+                prepared.setInt(5, if (setting.isEnabled) 1 else 0)
+                prepared.setString(6, setting.secretRef)
+                prepared.setString(7, setting.updatedAt.toString())
+                prepared.setString(8, setting.connectionHealth.name)
+                prepared.setString(9, setting.connectionMessage)
+                prepared.setString(10, setting.id)
                 prepared.executeUpdate()
             }
         }
@@ -67,7 +77,8 @@ class SqliteConnectorSettingsRepository(
             connection.prepareStatement(
                 """
                 SELECT id, connector_type, display_name, base_url,
-                       is_enabled, created_at, updated_at
+                      default_model, is_enabled, secret_ref,
+                      created_at, updated_at, connection_health, connection_message
                 FROM connector_instances
                 WHERE id = ?
                 """.trimIndent(),
@@ -88,7 +99,8 @@ class SqliteConnectorSettingsRepository(
             connection.prepareStatement(
                 """
                 SELECT id, connector_type, display_name, base_url,
-                       is_enabled, created_at, updated_at
+                      default_model, is_enabled, secret_ref,
+                      created_at, updated_at, connection_health, connection_message
                 FROM connector_instances
                 ORDER BY updated_at DESC
                 """.trimIndent(),
@@ -120,12 +132,13 @@ class SqliteConnectorSettingsRepository(
             connectorType = resultSet.getString("connector_type"),
             displayName = resultSet.getString("display_name"),
             baseUrl = resultSet.getString("base_url") ?: "",
+            defaultModel = resultSet.getString("default_model") ?: "",
             isEnabled = resultSet.getInt("is_enabled") == 1,
-            secretRef = null,
+            secretRef = resultSet.getString("secret_ref"),
             createdAt = Instant.parse(resultSet.getString("created_at")),
             updatedAt = Instant.parse(resultSet.getString("updated_at")),
-            connectionHealth = ConnectionHealth.UNKNOWN,
-            connectionMessage = "Not checked",
+            connectionHealth = ConnectionHealth.valueOf(resultSet.getString("connection_health") ?: ConnectionHealth.UNKNOWN.name),
+            connectionMessage = resultSet.getString("connection_message") ?: "Not checked",
         )
     }
 }

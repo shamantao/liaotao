@@ -1,7 +1,7 @@
 /*
- * ChatWorkspaceScreen.kt - primary desktop workspace UI.
- * Responsibilities: render the collapsible sidebar, conversation timeline,
- * bottom composer, and settings toggle while preserving chat orchestration.
+ * ChatWorkspaceScreen.kt - chat workspace orchestration and state.
+ * Responsibilities: hold UI state, delegate rendering to panel components,
+ * and coordinate user actions with chat services.
  */
 
 package io.liaotao.appdesktop.chat
@@ -9,32 +9,20 @@ package io.liaotao.appdesktop.chat
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,33 +31,57 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.liaotao.appdesktop.settings.SettingsScreen
+import io.liaotao.appdesktop.settings.DesktopFeatureFlags
+import io.liaotao.appdesktop.settings.ProviderSettingsService
 import io.liaotao.connectors.core.ConnectorType
 import io.liaotao.domain.history.ConversationHistoryQuery
 import io.liaotao.domain.history.ConversationHistoryService
-import io.liaotao.domain.conversations.Conversation
 import io.liaotao.domain.routing.ExecutionAttempt
+import io.liaotao.shared.settings.ConnectorSetting
 import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.UUID
 
 @Composable
 fun ChatWorkspaceScreen() {
     val controller = remember { ChatWorkspaceController() }
+    val providerService = remember { ProviderSettingsService() }
     var prompt by rememberSaveable { mutableStateOf("") }
-    var selectedProvider by rememberSaveable { mutableStateOf(ConnectorType.OLLAMA) }
+    val enabledProviders = remember { mutableStateListOf<ConnectorSetting>() }
+    var selectedProviderId by rememberSaveable { mutableStateOf<String?>(null) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var sidebarExpanded by rememberSaveable { mutableStateOf(true) }
     var modelMenuExpanded by remember { mutableStateOf(false) }
     var attachedFileLabel by rememberSaveable { mutableStateOf<String?>(null) }
+    var attachedFilePath by rememberSaveable { mutableStateOf<String?>(null) }
+    var workspaceStatus by rememberSaveable { mutableStateOf<String?>(null) }
     var folderCounter by rememberSaveable { mutableStateOf(2) }
     var selectedFolderId by rememberSaveable { mutableStateOf("default") }
     var selectedConversationId by rememberSaveable { mutableStateOf<String?>(null) }
+
+    fun refreshProviders() {
+        if (!DesktopFeatureFlags.usePersistedProviderSelector) {
+            enabledProviders.clear()
+            enabledProviders.addAll(legacyProviderFallbacks())
+            if (enabledProviders.none { it.id == selectedProviderId }) {
+                selectedProviderId = enabledProviders.firstOrNull()?.id
+            }
+            return
+        }
+
+        providerService.ensureDefaults()
+        enabledProviders.clear()
+        enabledProviders.addAll(providerService.listEnabled())
+        if (enabledProviders.none { it.id == selectedProviderId }) {
+            selectedProviderId = enabledProviders.firstOrNull()?.id
+        }
+    }
+
+    LaunchedEffect(showSettings) {
+        if (!showSettings) {
+            refreshProviders()
+        }
+    }
 
     val folders = remember {
         mutableStateListOf(
@@ -96,8 +108,8 @@ fun ChatWorkspaceScreen() {
             .background(
                 brush = Brush.horizontalGradient(
                     colors = listOf(
-                        Color(0xFFEEF5F4),
-                        Color(0xFFFDF9F2),
+                        MaterialTheme.colorScheme.background,
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
                     ),
                 ),
             ),
@@ -117,37 +129,43 @@ fun ChatWorkspaceScreen() {
                 selectedFolderId = id
                 folderCounter += 1
             },
-            onExportFolders = {},
+            onExportFolders = {
+                val path = ChatWorkspaceDesktopActions.chooseExportTarget("liaotao-folders-export.json")
+                if (path != null) {
+                    val result = controller.exportAllFolders(path)
+                    workspaceStatus = result.fold(
+                        onSuccess = { "Folders exported to $it" },
+                        onFailure = { "Export failed: ${it.message}" },
+                    )
+                }
+            },
             onSelectFolder = { selectedFolderId = it },
             onAddConversation = {
                 controller.startConversation()
                 selectedConversationId = null
                 showSettings = false
             },
-            onExportConversations = {},
+            onExportConversations = {
+                val path = ChatWorkspaceDesktopActions.chooseExportTarget("liaotao-conversations-export.json")
+                if (path != null) {
+                    val result = controller.exportCurrentFolder(path, selectedFolderId)
+                    workspaceStatus = result.fold(
+                        onSuccess = { "Conversations exported to $it" },
+                        onFailure = { "Export failed: ${it.message}" },
+                    )
+                }
+            },
             onSelectConversation = { selectedConversationId = it },
         )
 
         if (showSettings) {
-            Card(
+            SettingsWorkspace(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
                     .padding(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            ) {
-                Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Settings", style = MaterialTheme.typography.headlineSmall)
-                        TextButton(onClick = { showSettings = false }) { Text("Back to chat") }
-                    }
-                    SettingsScreen()
-                }
-            }
+                onBackToChat = { showSettings = false },
+            )
         } else {
             ConversationWorkspace(
                 modifier = Modifier
@@ -156,28 +174,63 @@ fun ChatWorkspaceScreen() {
                     .padding(16.dp),
                 messages = controller.messages,
                 prompt = prompt,
-                selectedProvider = selectedProvider,
+                providers = enabledProviders,
+                selectedProviderId = selectedProviderId,
                 modelMenuExpanded = modelMenuExpanded,
                 attachedFileLabel = attachedFileLabel,
+                statusMessage = workspaceStatus,
                 executionAttempts = controller.executionAttempts,
                 onPromptChange = { prompt = it },
                 onToggleModelMenu = { modelMenuExpanded = !modelMenuExpanded },
-                onSelectProvider = {
-                    selectedProvider = it
+                onSelectProvider = { providerId ->
+                    selectedProviderId = providerId
                     modelMenuExpanded = false
                 },
                 onAttach = {
-                    attachedFileLabel = if (attachedFileLabel == null) "attached-context.txt" else null
+                    val selected = ChatWorkspaceDesktopActions.chooseAttachment()
+                    if (selected != null) {
+                        attachedFilePath = selected.toString()
+                        attachedFileLabel = selected.fileName.toString()
+                        workspaceStatus = "Attached ${selected.fileName}"
+                    }
                 },
                 onSend = {
                     val text = prompt.trim()
+                    val selectedProvider = enabledProviders.firstOrNull { it.id == selectedProviderId }
                     if (text.isNotEmpty()) {
-                        controller.send(text, selectedProvider)
+                        val withAttachment = if (!attachedFilePath.isNullOrBlank()) {
+                            runCatching {
+                                val preview = ChatWorkspaceDesktopActions.readAttachmentPreview(java.nio.file.Paths.get(attachedFilePath))
+                                "$text\n\n--- Attached file context (${attachedFileLabel ?: "file"}) ---\n$preview"
+                            }.getOrElse {
+                                workspaceStatus = "Attachment read failed: ${it.message}"
+                                text
+                            }
+                        } else {
+                            text
+                        }
+                        if (selectedProvider != null) {
+                            controller.send(
+                                prompt = withAttachment,
+                                provider = selectedProvider.toChatProviderConfig(),
+                                availableProviders = enabledProviders.map { it.toChatProviderConfig() },
+                                projectId = selectedFolderId,
+                            )
+                        }
                         prompt = ""
                         attachedFileLabel = null
+                        attachedFilePath = null
                     }
                 },
-                onRetry = { controller.retryLast(selectedProvider) },
+                onRetry = {
+                    val selectedProvider = enabledProviders.firstOrNull { it.id == selectedProviderId }
+                    if (selectedProvider != null) {
+                        controller.retryLast(
+                            provider = selectedProvider.toChatProviderConfig(),
+                            availableProviders = enabledProviders.map { it.toChatProviderConfig() },
+                        )
+                    }
+                },
                 onEditUserMessage = { prompt = it },
             )
         }
@@ -185,410 +238,96 @@ fun ChatWorkspaceScreen() {
 }
 
 @Composable
-private fun WorkspaceSidebar(
-    expanded: Boolean,
-    width: androidx.compose.ui.unit.Dp,
-    folders: List<UiFolder>,
-    selectedFolderId: String,
-    conversations: List<Conversation>,
-    selectedConversationId: String?,
-    onToggleExpanded: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onAddFolder: () -> Unit,
-    onExportFolders: () -> Unit,
-    onSelectFolder: (String) -> Unit,
-    onAddConversation: () -> Unit,
-    onExportConversations: () -> Unit,
-    onSelectConversation: (String) -> Unit,
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxHeight()
-            .width(width)
-            .padding(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF18252A)),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("◉", color = Color(0xFF8EE3A1), style = MaterialTheme.typography.titleMedium)
-                if (expanded) {
-                    Text("Liaotao", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-                }
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SideIconButton(label = "☰", isActive = false, onClick = onToggleExpanded)
-                SideIconButton(label = "⚙", isActive = false, onClick = onOpenSettings)
-            }
-
-            SidebarSectionHeader(
-                expanded = expanded,
-                icon = "🗂",
-                title = "Folders",
-                onAdd = onAddFolder,
-                onExportAll = onExportFolders,
-            )
-
-            LazyColumn(
-                modifier = Modifier.weight(0.45f),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                contentPadding = PaddingValues(bottom = 8.dp),
-            ) {
-                items(folders, key = { it.id }) { folder ->
-                    SidebarEntry(
-                        expanded = expanded,
-                        icon = folder.icon,
-                        label = folder.label,
-                        trailing = null,
-                        selected = folder.id == selectedFolderId,
-                        onClick = { onSelectFolder(folder.id) },
-                    )
-                }
-            }
-
-            SidebarSectionHeader(
-                expanded = expanded,
-                icon = "💬",
-                title = "Conversations",
-                onAdd = onAddConversation,
-                onExportAll = onExportConversations,
-            )
-
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                contentPadding = PaddingValues(bottom = 6.dp),
-            ) {
-                items(conversations, key = { it.id }) { conversation ->
-                    SidebarEntry(
-                        expanded = expanded,
-                        icon = "💬",
-                        label = conversation.title,
-                        trailing = formatDay(conversation.lastActivityAt),
-                        selected = conversation.id == selectedConversationId,
-                        onClick = { onSelectConversation(conversation.id) },
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SideIconButton(label: String, isActive: Boolean, onClick: () -> Unit) {
-    val container = if (isActive) Color(0xFF30697A) else Color(0xFF21343B)
-    Card(colors = CardDefaults.cardColors(containerColor = container)) {
-        IconButton(onClick = onClick) {
-            Text(label, color = Color.White)
-        }
-    }
-}
-
-@Composable
-private fun SidebarSectionHeader(
-    expanded: Boolean,
-    icon: String,
-    title: String,
-    onAdd: () -> Unit,
-    onExportAll: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Text(icon, color = Color(0xFFB6DCE8))
-        if (expanded) {
-            Text(title, color = Color(0xFFEAF4F8), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-        }
-        SideIconButton(label = "+", isActive = false, onClick = onAdd)
-        SideIconButton(label = "⇪", isActive = false, onClick = onExportAll)
-    }
-}
-
-@Composable
-private fun SidebarEntry(
-    expanded: Boolean,
-    icon: String,
-    label: String,
-    trailing: String?,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val tone = if (selected) Color(0xFF2C4954) else Color(0xFF1F3037)
-    Card(colors = CardDefaults.cardColors(containerColor = tone), onClick = onClick) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(icon, color = Color.White)
-            if (expanded) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(label, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (!trailing.isNullOrBlank()) {
-                        Text(trailing, color = Color(0xFFA4BDC7), style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ConversationWorkspace(
-    modifier: Modifier = Modifier,
-    messages: List<ChatUiMessage>,
-    prompt: String,
-    selectedProvider: ConnectorType,
-    modelMenuExpanded: Boolean,
-    attachedFileLabel: String?,
-    executionAttempts: List<ExecutionAttempt>,
-    onPromptChange: (String) -> Unit,
-    onToggleModelMenu: () -> Unit,
-    onSelectProvider: (ConnectorType) -> Unit,
-    onAttach: () -> Unit,
-    onSend: () -> Unit,
-    onRetry: () -> Unit,
-    onEditUserMessage: (String) -> Unit,
+private fun SettingsWorkspace(
+    modifier: Modifier,
+    onBackToChat: () -> Unit,
 ) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFDFDFB)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
-        Column(modifier = Modifier.fillMaxSize().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFEAF3F8))) {
-                Column(modifier = Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Execution attempts", style = MaterialTheme.typography.titleSmall)
-                    executionAttempts.takeLast(4).forEach { attempt ->
-                        val detail = "${attempt.providerId} · ${attempt.status} · retry ${attempt.retryIndex}" +
-                            (attempt.errorMessage?.let { " · $it" } ?: "")
-                        Text(detail, style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-            }
-
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(vertical = 8.dp),
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                items(messages, key = { it.id }) { message ->
-                    ChatBubble(message = message, onEditUserMessage = onEditUserMessage)
-                }
+                Text("Settings", style = MaterialTheme.typography.headlineSmall)
+                TextButton(onClick = onBackToChat) { Text("Back to chat") }
             }
-
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFF3F9F7))) {
-                Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = prompt,
-                        onValueChange = onPromptChange,
-                        label = { Text("Ask your question") },
-                        minLines = 3,
-                        maxLines = 12,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Box {
-                                TextButton(onClick = onToggleModelMenu) {
-                                    Text("Model: ${selectedProvider.name}")
-                                }
-                                DropdownMenu(expanded = modelMenuExpanded, onDismissRequest = onToggleModelMenu) {
-                                    ConnectorType.entries.forEach { type ->
-                                        DropdownMenuItem(
-                                            text = { Text(type.name) },
-                                            onClick = { onSelectProvider(type) },
-                                        )
-                                    }
-                                }
-                            }
-                            TextButton(onClick = onAttach) {
-                                Text(attachedFileLabel ?: "Attach file")
-                            }
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = onRetry) { Text("Retry") }
-                            Button(onClick = onSend) { Text("Send") }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ChatBubble(message: ChatUiMessage, onEditUserMessage: (String) -> Unit) {
-    val isUser = message.role == "user"
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
-    ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth(0.82f)
-                .heightIn(min = 72.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (isUser) Color(0xFFE2F6E9) else Color(0xFFEAF1FF),
-            ),
-        ) {
-            Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(message.content.ifBlank { "..." })
-
-                if (isUser) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(formatDateTime(message.createdAt), style = MaterialTheme.typography.labelSmall)
-                        Spacer(modifier = Modifier.size(8.dp))
-                        TextButton(onClick = { onEditUserMessage(message.content) }) { Text("✎") }
-                    }
-                } else {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        AssistantMetaTag("Model", message.model)
-                        AssistantMetaTag("Tokens", (message.tokensUsed ?: 0).toString())
-                        AssistantMetaTag("Done", formatDateTime(message.completedAt ?: message.createdAt))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AssistantMetaTag(label: String, value: String) {
-    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFD8E9F7))) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("$label:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
-            Text(value, style = MaterialTheme.typography.labelSmall)
+            SettingsScreen()
         }
     }
 }
 
 internal class ChatWorkspaceController {
-    private val chatService = ChatWorkspaceService()
+    private val delegate = ChatWorkspaceControllerDelegate()
 
-    val messages = mutableStateListOf<ChatUiMessage>()
-    val executionAttempts = mutableStateListOf<ExecutionAttempt>()
-    val conversations = mutableStateListOf<io.liaotao.domain.conversations.Conversation>()
+    val messages = delegate.messages
+    val executionAttempts = delegate.executionAttempts
+    val conversations = delegate.conversations
 
-    private var lastPrompt: String? = null
-    private var lastProvider: ConnectorType = ConnectorType.OLLAMA
+    fun startConversation() = delegate.startConversation()
 
-    fun startConversation() {
-        messages.clear()
-        lastPrompt = null
+    fun send(
+        prompt: String,
+        provider: ChatProviderConfig,
+        availableProviders: List<ChatProviderConfig>,
+        projectId: String,
+    ) = delegate.send(prompt, provider, availableProviders, projectId)
+
+    fun retryLast(provider: ChatProviderConfig, availableProviders: List<ChatProviderConfig>) {
+        delegate.retryLast(provider, availableProviders)
     }
 
-    fun send(prompt: String, provider: ConnectorType) {
-        val sentAt = Instant.now()
-        val userMessage = ChatUiMessage(
-            id = UUID.randomUUID().toString(),
-            role = "user",
-            content = prompt,
-            source = provider.name,
-            model = "user-input",
-            createdAt = sentAt,
-            completedAt = sentAt,
-            tokensUsed = estimateTokens(prompt),
-        )
-        messages.add(userMessage)
-
-        val draftId = UUID.randomUUID().toString()
-        val draftCreatedAt = Instant.now()
-        messages.add(
-            ChatUiMessage(
-                id = draftId,
-                role = "assistant",
-                content = "",
-                source = provider.name,
-                model = "streaming",
-                createdAt = draftCreatedAt,
-                completedAt = null,
-                tokensUsed = null,
-            ),
-        )
-
-        val result = chatService.execute(prompt, provider) { chunk ->
-            val index = messages.indexOfFirst { it.id == draftId }
-            if (index >= 0) {
-                val current = messages[index]
-                messages[index] = current.copy(content = current.content + chunk)
-            }
-        }
-        executionAttempts.addAll(result.attempts)
-
-        val draftIndex = messages.indexOfFirst { it.id == draftId }
-        if (draftIndex >= 0) {
-            val draft = messages[draftIndex]
-            val finalContent = if (draft.content.isNotBlank()) draft.content else result.reply
-            val completedAt = Instant.now()
-            messages[draftIndex] = draft.copy(
-                content = finalContent,
-                source = result.source,
-                model = result.model,
-                completedAt = completedAt,
-                tokensUsed = estimateTokens(finalContent),
-            )
-        }
-
-        conversations.clear()
-        conversations.addAll(chatService.conversationHistory())
-
-        lastPrompt = prompt
-        lastProvider = provider
+    fun exportAllFolders(outputPath: java.nio.file.Path): Result<java.nio.file.Path> {
+        return delegate.exportAllFolders(outputPath)
     }
 
-    fun retryLast(provider: ConnectorType) {
-        val prompt = lastPrompt ?: return
-        send(prompt, provider.takeIf { it != ConnectorType.OPENAI_COMPAT } ?: lastProvider)
+    fun exportCurrentFolder(outputPath: java.nio.file.Path, projectId: String): Result<java.nio.file.Path> {
+        return delegate.exportCurrentFolder(outputPath, projectId)
     }
 }
 
-internal data class ChatUiMessage(
-    val id: String,
-    val role: String,
-    val content: String,
-    val source: String,
-    val model: String,
-    val createdAt: Instant,
-    val completedAt: Instant?,
-    val tokensUsed: Int?,
-)
+private fun ConnectorSetting.toChatProviderConfig(): ChatProviderConfig {
+    val type = runCatching { ConnectorType.valueOf(connectorType) }.getOrDefault(ConnectorType.OLLAMA)
+    return ChatProviderConfig(
+        id = id,
+        connectorType = type,
+        displayName = displayName,
+        baseUrl = baseUrl,
+        defaultModel = defaultModel.ifBlank { "gpt-4o-mini" },
+    )
+}
 
-internal data class UiFolder(
-    val id: String,
-    val label: String,
-    val icon: String,
-)
-
-private val dayFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-private val dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-private val localZone: ZoneId = ZoneId.systemDefault()
-
-private fun formatDay(instant: Instant): String = dayFormatter.format(instant.atZone(localZone))
-
-private fun formatDateTime(instant: Instant): String = dateTimeFormatter.format(instant.atZone(localZone))
-
-private fun estimateTokens(content: String): Int {
-    val trimmed = content.trim()
-    if (trimmed.isEmpty()) {
-        return 0
-    }
-    return trimmed.split(Regex("\\s+")).size
+private fun legacyProviderFallbacks(): List<ConnectorSetting> {
+    val now = Instant.now()
+    return listOf(
+        ConnectorSetting(
+            id = "legacy-ollama",
+            connectorType = "OLLAMA",
+            displayName = "Ollama (legacy)",
+            baseUrl = "http://localhost:11434",
+            defaultModel = "llama3.1",
+            isEnabled = true,
+            secretRef = null,
+            createdAt = now,
+            updatedAt = now,
+            connectionHealth = io.liaotao.shared.settings.ConnectionHealth.UNKNOWN,
+            connectionMessage = "Legacy selector enabled",
+        ),
+        ConnectorSetting(
+            id = "legacy-litellm",
+            connectorType = "LITELLM",
+            displayName = "LiteLLM (legacy)",
+            baseUrl = "http://localhost:4000",
+            defaultModel = "gpt-4o-mini",
+            isEnabled = true,
+            secretRef = null,
+            createdAt = now,
+            updatedAt = now,
+            connectionHealth = io.liaotao.shared.settings.ConnectionHealth.UNKNOWN,
+            connectionMessage = "Legacy selector enabled",
+        ),
+    )
 }

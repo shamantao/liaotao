@@ -32,7 +32,7 @@ class SqlitePersistenceTest {
             }
         }
 
-        assertEquals(listOf(1), versions)
+        assertEquals(listOf(1, 2), versions)
     }
 
     @Test

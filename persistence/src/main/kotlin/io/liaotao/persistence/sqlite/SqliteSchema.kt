@@ -113,5 +113,15 @@ internal object SqliteSchema {
                 """.trimIndent(),
             ),
         ),
+        SqlMigration(
+            version = 2,
+            name = "connector_settings_columns_v2",
+            statements = listOf(
+                "ALTER TABLE connector_instances ADD COLUMN default_model TEXT NOT NULL DEFAULT ''",
+                "ALTER TABLE connector_instances ADD COLUMN secret_ref TEXT",
+                "ALTER TABLE connector_instances ADD COLUMN connection_health TEXT NOT NULL DEFAULT 'UNKNOWN'",
+                "ALTER TABLE connector_instances ADD COLUMN connection_message TEXT NOT NULL DEFAULT 'Not checked'",
+            ),
+        ),
     )
 }
