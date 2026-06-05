@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -32,7 +33,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
+import io.liaotao.appdesktop.i18n.AppI18n
+import io.liaotao.appdesktop.i18n.AppLanguage
+import io.liaotao.appdesktop.i18n.LocalAppStrings
 import io.liaotao.appdesktop.settings.SettingsScreen
+import io.liaotao.appdesktop.settings.DesktopUserPreferences
 import io.liaotao.appdesktop.settings.DesktopFeatureFlags
 import io.liaotao.appdesktop.settings.ProviderSettingsService
 import io.liaotao.connectors.core.ConnectorType
@@ -46,6 +51,8 @@ import java.time.Instant
 fun ChatWorkspaceScreen() {
     val controller = remember { ChatWorkspaceController() }
     val providerService = remember { ProviderSettingsService() }
+    var language by rememberSaveable { mutableStateOf(DesktopUserPreferences.loadLanguage()) }
+    val strings = remember(language) { AppI18n.strings(language) }
     var prompt by rememberSaveable { mutableStateOf("") }
     val enabledProviders = remember { mutableStateListOf<ConnectorSetting>() }
     var selectedProviderId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -85,7 +92,7 @@ fun ChatWorkspaceScreen() {
 
     val folders = remember {
         mutableStateListOf(
-            UiFolder(id = "default", label = "Folder #1", icon = "📁"),
+            UiFolder(id = "default", label = strings.folderLabel(1), icon = "📁"),
         )
     }
 
@@ -102,137 +109,150 @@ fun ChatWorkspaceScreen() {
 
     val sidebarWidth by animateDpAsState(if (sidebarExpanded) 336.dp else 92.dp)
 
-    Row(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.horizontalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+    CompositionLocalProvider(LocalAppStrings provides strings) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.background,
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                        ),
                     ),
                 ),
-            ),
-    ) {
-        WorkspaceSidebar(
-            expanded = sidebarExpanded,
-            width = sidebarWidth,
-            folders = folders,
-            selectedFolderId = selectedFolderId,
-            conversations = visibleConversations,
-            selectedConversationId = selectedConversationId,
-            onToggleExpanded = { sidebarExpanded = !sidebarExpanded },
-            onOpenSettings = { showSettings = true },
-            onAddFolder = {
-                val id = "folder-$folderCounter"
-                folders.add(UiFolder(id = id, label = "Folder #$folderCounter", icon = "📁"))
-                selectedFolderId = id
-                folderCounter += 1
-            },
-            onExportFolders = {
-                val path = ChatWorkspaceDesktopActions.chooseExportTarget("liaotao-folders-export.json")
-                if (path != null) {
-                    val result = controller.exportAllFolders(path)
-                    workspaceStatus = result.fold(
-                        onSuccess = { "Folders exported to $it" },
-                        onFailure = { "Export failed: ${it.message}" },
+        ) {
+            WorkspaceSidebar(
+                expanded = sidebarExpanded,
+                width = sidebarWidth,
+                folders = folders,
+                selectedFolderId = selectedFolderId,
+                conversations = visibleConversations,
+                selectedConversationId = selectedConversationId,
+                onToggleExpanded = { sidebarExpanded = !sidebarExpanded },
+                onOpenSettings = { showSettings = true },
+                onAddFolder = {
+                    val id = "folder-$folderCounter"
+                    folders.add(UiFolder(id = id, label = strings.folderLabel(folderCounter), icon = "📁"))
+                    selectedFolderId = id
+                    folderCounter += 1
+                },
+                onExportFolders = {
+                    val path = ChatWorkspaceDesktopActions.chooseExportTarget(
+                        defaultFileName = "liaotao-folders-export.json",
+                        dialogTitle = strings.exportDialog,
                     )
-                }
-            },
-            onSelectFolder = { selectedFolderId = it },
-            onAddConversation = {
-                controller.startConversation()
-                selectedConversationId = null
-                showSettings = false
-            },
-            onExportConversations = {
-                val path = ChatWorkspaceDesktopActions.chooseExportTarget("liaotao-conversations-export.json")
-                if (path != null) {
-                    val result = controller.exportCurrentFolder(path, selectedFolderId)
-                    workspaceStatus = result.fold(
-                        onSuccess = { "Conversations exported to $it" },
-                        onFailure = { "Export failed: ${it.message}" },
-                    )
-                }
-            },
-            onSelectConversation = { selectedConversationId = it },
-        )
-
-        if (showSettings) {
-            SettingsWorkspace(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .padding(16.dp),
-                onBackToChat = { showSettings = false },
-            )
-        } else {
-            ConversationWorkspace(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .padding(16.dp),
-                messages = controller.messages,
-                prompt = prompt,
-                providers = enabledProviders,
-                selectedProviderId = selectedProviderId,
-                modelMenuExpanded = modelMenuExpanded,
-                attachedFileLabel = attachedFileLabel,
-                statusMessage = workspaceStatus,
-                executionAttempts = controller.executionAttempts,
-                onPromptChange = { prompt = it },
-                onToggleModelMenu = { modelMenuExpanded = !modelMenuExpanded },
-                onSelectProvider = { providerId ->
-                    selectedProviderId = providerId
-                    modelMenuExpanded = false
-                },
-                onAttach = {
-                    val selected = ChatWorkspaceDesktopActions.chooseAttachment()
-                    if (selected != null) {
-                        attachedFilePath = selected.toString()
-                        attachedFileLabel = selected.fileName.toString()
-                        workspaceStatus = "Attached ${selected.fileName}"
-                    }
-                },
-                onSend = {
-                    val text = prompt.trim()
-                    val selectedProvider = enabledProviders.firstOrNull { it.id == selectedProviderId }
-                    if (text.isNotEmpty()) {
-                        val withAttachment = if (!attachedFilePath.isNullOrBlank()) {
-                            runCatching {
-                                val preview = ChatWorkspaceDesktopActions.readAttachmentPreview(java.nio.file.Paths.get(attachedFilePath))
-                                "$text\n\n--- Attached file context (${attachedFileLabel ?: "file"}) ---\n$preview"
-                            }.getOrElse {
-                                workspaceStatus = "Attachment read failed: ${it.message}"
-                                text
-                            }
-                        } else {
-                            text
-                        }
-                        if (selectedProvider != null) {
-                            controller.send(
-                                prompt = withAttachment,
-                                provider = selectedProvider.toChatProviderConfig(),
-                                availableProviders = enabledProviders.map { it.toChatProviderConfig() },
-                                projectId = selectedFolderId,
-                            )
-                        }
-                        prompt = ""
-                        attachedFileLabel = null
-                        attachedFilePath = null
-                    }
-                },
-                onRetry = {
-                    val selectedProvider = enabledProviders.firstOrNull { it.id == selectedProviderId }
-                    if (selectedProvider != null) {
-                        controller.retryLast(
-                            provider = selectedProvider.toChatProviderConfig(),
-                            availableProviders = enabledProviders.map { it.toChatProviderConfig() },
+                    if (path != null) {
+                        val result = controller.exportAllFolders(path)
+                        workspaceStatus = result.fold(
+                            onSuccess = { strings.foldersExported(it.toString()) },
+                            onFailure = { strings.exportFailed(it.message) },
                         )
                     }
                 },
-                onEditUserMessage = { prompt = it },
+                onSelectFolder = { selectedFolderId = it },
+                onAddConversation = {
+                    controller.startConversation()
+                    selectedConversationId = null
+                    showSettings = false
+                },
+                onExportConversations = {
+                    val path = ChatWorkspaceDesktopActions.chooseExportTarget(
+                        defaultFileName = "liaotao-conversations-export.json",
+                        dialogTitle = strings.exportDialog,
+                    )
+                    if (path != null) {
+                        val result = controller.exportCurrentFolder(path, selectedFolderId)
+                        workspaceStatus = result.fold(
+                            onSuccess = { strings.conversationsExported(it.toString()) },
+                            onFailure = { strings.exportFailed(it.message) },
+                        )
+                    }
+                },
+                onSelectConversation = { selectedConversationId = it },
             )
+
+            if (showSettings) {
+                SettingsWorkspace(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .padding(16.dp),
+                    language = language,
+                    onLanguageChange = {
+                        language = it
+                        DesktopUserPreferences.saveLanguage(it)
+                    },
+                    onBackToChat = { showSettings = false },
+                )
+            } else {
+                ConversationWorkspace(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .padding(16.dp),
+                    messages = controller.messages,
+                    prompt = prompt,
+                    providers = enabledProviders,
+                    selectedProviderId = selectedProviderId,
+                    modelMenuExpanded = modelMenuExpanded,
+                    attachedFileLabel = attachedFileLabel,
+                    statusMessage = workspaceStatus,
+                    executionAttempts = controller.executionAttempts,
+                    onPromptChange = { prompt = it },
+                    onToggleModelMenu = { modelMenuExpanded = !modelMenuExpanded },
+                    onSelectProvider = { providerId ->
+                        selectedProviderId = providerId
+                        modelMenuExpanded = false
+                    },
+                    onAttach = {
+                        val selected = ChatWorkspaceDesktopActions.chooseAttachment(strings.attachFileDialog)
+                        if (selected != null) {
+                            attachedFilePath = selected.toString()
+                            attachedFileLabel = selected.fileName.toString()
+                            workspaceStatus = strings.attached(selected.fileName.toString())
+                        }
+                    },
+                    onSend = {
+                        val text = prompt.trim()
+                        val selectedProvider = enabledProviders.firstOrNull { it.id == selectedProviderId }
+                        if (text.isNotEmpty()) {
+                            val withAttachment = if (!attachedFilePath.isNullOrBlank()) {
+                                runCatching {
+                                    val preview = ChatWorkspaceDesktopActions.readAttachmentPreview(java.nio.file.Paths.get(attachedFilePath))
+                                    "$text\n\n--- Attached file context (${attachedFileLabel ?: "file"}) ---\n$preview"
+                                }.getOrElse {
+                                    workspaceStatus = strings.attachmentReadFailed(it.message)
+                                    text
+                                }
+                            } else {
+                                text
+                            }
+                            if (selectedProvider != null) {
+                                controller.send(
+                                    prompt = withAttachment,
+                                    provider = selectedProvider.toChatProviderConfig(),
+                                    availableProviders = enabledProviders.map { it.toChatProviderConfig() },
+                                    projectId = selectedFolderId,
+                                )
+                            }
+                            prompt = ""
+                            attachedFileLabel = null
+                            attachedFilePath = null
+                        }
+                    },
+                    onRetry = {
+                        val selectedProvider = enabledProviders.firstOrNull { it.id == selectedProviderId }
+                        if (selectedProvider != null) {
+                            controller.retryLast(
+                                provider = selectedProvider.toChatProviderConfig(),
+                                availableProviders = enabledProviders.map { it.toChatProviderConfig() },
+                            )
+                        }
+                    },
+                    onEditUserMessage = { prompt = it },
+                )
+            }
         }
     }
 }
@@ -240,8 +260,11 @@ fun ChatWorkspaceScreen() {
 @Composable
 private fun SettingsWorkspace(
     modifier: Modifier,
+    language: AppLanguage,
+    onLanguageChange: (AppLanguage) -> Unit,
     onBackToChat: () -> Unit,
 ) {
+    val strings = LocalAppStrings.current
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -252,10 +275,18 @@ private fun SettingsWorkspace(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Settings", style = MaterialTheme.typography.headlineSmall)
-                TextButton(onClick = onBackToChat) { Text("Back to chat") }
+                Text(strings.settings, style = MaterialTheme.typography.headlineSmall)
+                TextButton(
+                    onClick = onBackToChat,
+                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
+                ) { Text(strings.backToChat) }
             }
-            SettingsScreen()
+            SettingsScreen(
+                selectedLanguage = language,
+                onLanguageChange = onLanguageChange,
+            )
         }
     }
 }

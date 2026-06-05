@@ -7,11 +7,15 @@
 package io.liaotao.appdesktop
 
 import io.liaotao.appdesktop.theme.LiaotaoTheme
+import io.liaotao.app_desktop.generated.resources.Res
+import io.liaotao.app_desktop.generated.resources.liaotao_logo
+import org.jetbrains.compose.resources.painterResource
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 
 fun main() = application {
-    Window(onCloseRequest = ::exitApplication, title = "Liaotao") {
+    val appIcon = painterResource(Res.drawable.liaotao_logo)
+    Window(onCloseRequest = ::exitApplication, title = "Liaotao", icon = appIcon) {
         LiaotaoTheme {
             LiaotaoAppShell()
         }

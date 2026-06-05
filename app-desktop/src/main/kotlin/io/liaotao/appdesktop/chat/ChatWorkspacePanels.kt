@@ -8,21 +8,21 @@ package io.liaotao.appdesktop.chat
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -36,10 +36,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.liaotao.appdesktop.i18n.LocalAppStrings
 import io.liaotao.appdesktop.theme.DesktopThemeManager
 import io.liaotao.app_desktop.generated.resources.Res
 import io.liaotao.app_desktop.generated.resources.liaotao_logo
@@ -68,6 +68,7 @@ internal fun WorkspaceSidebar(
     onExportConversations: () -> Unit,
     onSelectConversation: (String) -> Unit,
 ) {
+    val strings = LocalAppStrings.current
     val sidebarBackground = DesktopThemeManager.sidebarBackground()
     val sidebarCard = DesktopThemeManager.sidebarCard()
     val logoPainter = painterResource(Res.drawable.liaotao_logo)
@@ -91,7 +92,7 @@ internal fun WorkspaceSidebar(
                 )
                 if (expanded) {
                     Text(
-                        "Liaotao",
+                        strings.appName,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -106,7 +107,7 @@ internal fun WorkspaceSidebar(
             SidebarSectionHeader(
                 expanded = expanded,
                 icon = "🗂",
-                title = "Folders",
+                title = strings.folders,
                 onAdd = onAddFolder,
                 onExportAll = onExportFolders,
             )
@@ -132,7 +133,7 @@ internal fun WorkspaceSidebar(
             SidebarSectionHeader(
                 expanded = expanded,
                 icon = "💬",
-                title = "Conversations",
+                title = strings.conversations,
                 onAdd = onAddConversation,
                 onExportAll = onExportConversations,
             )
@@ -241,8 +242,9 @@ internal fun ConversationWorkspace(
     onRetry: () -> Unit,
     onEditUserMessage: (String) -> Unit,
 ) {
+    val strings = LocalAppStrings.current
     val selectedProvider = providers.firstOrNull { it.id == selectedProviderId }
-    val providerLabel = selectedProvider?.displayName ?: "No provider enabled"
+    val providerLabel = selectedProvider?.displayName ?: strings.noProviderEnabled
 
     Card(
         modifier = modifier,
@@ -261,7 +263,7 @@ internal fun ConversationWorkspace(
 
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))) {
                 Column(modifier = Modifier.fillMaxWidth().padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Execution attempts", style = MaterialTheme.typography.titleSmall)
+                    Text(strings.executionAttempts, style = MaterialTheme.typography.titleSmall)
                     executionAttempts.takeLast(4).forEach { attempt ->
                         val detail = "${attempt.providerId} · ${attempt.status} · retry ${attempt.retryIndex}" +
                             (attempt.errorMessage?.let { " · $it" } ?: "")
@@ -285,7 +287,7 @@ internal fun ConversationWorkspace(
                     OutlinedTextField(
                         value = prompt,
                         onValueChange = onPromptChange,
-                        label = { Text("Ask your question") },
+                        label = { Text(strings.askYourQuestion) },
                         minLines = 3,
                         maxLines = 12,
                         modifier = Modifier.fillMaxWidth(),
@@ -298,8 +300,13 @@ internal fun ConversationWorkspace(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Box {
-                                TextButton(onClick = onToggleModelMenu) {
-                                    Text("Model: $providerLabel")
+                                TextButton(
+                                    onClick = onToggleModelMenu,
+                                    colors = ButtonDefaults.textButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.onSurface,
+                                    ),
+                                ) {
+                                    Text(strings.modelLabel(providerLabel))
                                 }
                                 DropdownMenu(expanded = modelMenuExpanded, onDismissRequest = onToggleModelMenu) {
                                     providers.forEach { provider ->
@@ -310,13 +317,32 @@ internal fun ConversationWorkspace(
                                     }
                                 }
                             }
-                            TextButton(onClick = onAttach) {
-                                Text(attachedFileLabel ?: "Attach file")
+                            TextButton(
+                                onClick = onAttach,
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.onSurface,
+                                ),
+                            ) {
+                                Text(attachedFileLabel ?: strings.attachFile)
                             }
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = onRetry) { Text("Retry") }
-                            Button(onClick = onSend, enabled = selectedProvider != null) { Text("Send") }
+                        BoxWithConstraints {
+                            val compact = maxWidth < 220.dp
+                            Row(horizontalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 8.dp)) {
+                                Button(
+                                    onClick = onRetry,
+                                    contentPadding = if (compact) PaddingValues(horizontal = 10.dp, vertical = 8.dp) else ButtonDefaults.ContentPadding,
+                                ) {
+                                    Text("↻")
+                                }
+                                Button(
+                                    onClick = onSend,
+                                    enabled = selectedProvider != null,
+                                    contentPadding = if (compact) PaddingValues(horizontal = 10.dp, vertical = 8.dp) else ButtonDefaults.ContentPadding,
+                                ) {
+                                    Text("➤")
+                                }
+                            }
                         }
                     }
                 }
@@ -326,67 +352,7 @@ internal fun ConversationWorkspace(
 }
 
 @Composable
-private fun ChatBubble(message: ChatUiMessage, onEditUserMessage: (String) -> Unit) {
-    val isUser = message.role == "user"
-    val container = if (isUser) {
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
-    } else {
-        MaterialTheme.colorScheme.secondary.copy(alpha = 0.22f)
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
-    ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth(0.82f)
-                .heightIn(min = 72.dp),
-            colors = CardDefaults.cardColors(containerColor = container),
-        ) {
-            Column(modifier = Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(message.content.ifBlank { "..." })
-
-                if (isUser) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(formatDateTime(message.createdAt), style = MaterialTheme.typography.labelSmall)
-                        Spacer(modifier = Modifier.size(8.dp))
-                        TextButton(onClick = { onEditUserMessage(message.content) }) { Text("✎") }
-                    }
-                } else {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        AssistantMetaTag("Model", message.model)
-                        AssistantMetaTag("Tokens", (message.tokensUsed ?: 0).toString())
-                        AssistantMetaTag("Done", formatDateTime(message.completedAt ?: message.createdAt))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AssistantMetaTag(label: String, value: String) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f))) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("$label:", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
-            Text(value, style = MaterialTheme.typography.labelSmall)
-        }
-    }
-}
-
 private val dayFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-private val dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 private val localZone: ZoneId = ZoneId.systemDefault()
 
 private fun formatDay(instant: Instant): String = dayFormatter.format(instant.atZone(localZone))
-
-private fun formatDateTime(instant: Instant): String = dateTimeFormatter.format(instant.atZone(localZone))

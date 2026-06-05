@@ -18,15 +18,15 @@ import java.nio.file.Path
 internal object ChatWorkspaceDesktopActions {
     private val exportService = ConversationImportExportService()
 
-    fun chooseAttachment(): Path? {
-        val dialog = FileDialog(null as Frame?, "Attach file", FileDialog.LOAD)
+    fun chooseAttachment(dialogTitle: String): Path? {
+        val dialog = FileDialog(null as Frame?, dialogTitle, FileDialog.LOAD)
         dialog.isVisible = true
         val fileName = dialog.file ?: return null
         return File(dialog.directory, fileName).toPath()
     }
 
-    fun chooseExportTarget(defaultFileName: String): Path? {
-        val dialog = FileDialog(null as Frame?, "Export conversations", FileDialog.SAVE)
+    fun chooseExportTarget(defaultFileName: String, dialogTitle: String): Path? {
+        val dialog = FileDialog(null as Frame?, dialogTitle, FileDialog.SAVE)
         dialog.file = defaultFileName
         dialog.isVisible = true
         val fileName = dialog.file ?: return null
